@@ -1,0 +1,242 @@
+//@version=6
+// Botmax v0 — Liquidity Sweep Reversal (NQ, 5m)
+// Sequence found by the Jev knowledge graph:
+//   liquidity pool (Asia / London / prev-day H-L) -> sweep inside NY killzone
+//   -> market structure shift with an FVG (displacement) -> entry on FVG retrace
+//   -> stop beyond the sweep extreme, fixed-R target.
+// Build rules: research/PLAYBOOK.md (closed bars only, [1]+lookahead_on for HTF,
+// realistic NQ costs, one trade at a time, flat by end of day).
+strategy("Botmax v0 — Liquidity Sweep Reversal", shorttitle = "Botmax v0", overlay = true,
+     initial_capital       = 100000,
+     currency              = currency.USD,
+     default_qty_type      = strategy.fixed,
+     default_qty_value     = 1,
+     pyramiding            = 1,
+     commission_type       = strategy.commission.cash_per_contract,
+     commission_value      = 2.25,
+     slippage              = 1,
+     margin_long           = 8,
+     margin_short          = 8,
+     use_bar_magnifier     = false,   // needs Premium; off = coarser intrabar fills (see PLAYBOOK 5.1)
+     backtest_fill_limits_assumption = 1,
+     process_orders_on_close = false,
+     calc_on_every_tick    = false,
+     max_labels_count      = 300,
+     max_bars_back         = 2000)
+
+// ───────── inputs ─────────
+enum EntryMode
+    ce     = "FVG 50% (CE) limit"
+    edge   = "FVG near-edge limit"
+    market = "Market after MSS"
+
+enum BiasMode
+    off    = "Off"
+    tsmom  = "Daily time-series momentum"
+
+const string G_T = "Time (New York)"
+string kzSess     = input.session("0830-1100", "Trade window", group = G_T)
+string asiaSess   = input.session("2000-0000", "Asia range", group = G_T)
+string londonSess = input.session("0200-0500", "London range", group = G_T)
+string eodSess    = input.session("1555-1600", "Flatten at", group = G_T)
+
+const string G_L = "Liquidity pools"
+bool useAsia   = input.bool(true, "Asia high/low", group = G_L)
+bool useLondon = input.bool(true, "London high/low", group = G_L)
+bool usePD     = input.bool(true, "Previous day high/low", group = G_L)
+
+const string G_S = "Setup"
+int   reclaimBars = input.int(3, "Bars allowed to reclaim level", minval = 1, group = G_S)
+int   mssWindow   = input.int(15, "Bars allowed for MSS after sweep", minval = 2, group = G_S)
+int   pivLen      = input.int(2, "Internal swing length", minval = 1, group = G_S)
+float minFvgAtr   = input.float(0.15, "Min FVG size (x ATR)", minval = 0, step = 0.05, group = G_S)
+
+const string G_E = "Entry & risk"
+EntryMode entryMode = input.enum(EntryMode.ce, "Entry", group = G_E)
+int   entryWait   = input.int(10, "Cancel unfilled entry after (bars)", minval = 1, group = G_E)
+int   stopBuf     = input.int(4, "Stop buffer (ticks)", minval = 0, group = G_E)
+float maxStopAtr  = input.float(3.0, "Skip if stop > x ATR", minval = 0.5, step = 0.5, group = G_E)
+float rr          = input.float(2.0, "Target (R multiple)", minval = 0.5, step = 0.25, group = G_E)
+int   maxTrades   = input.int(2, "Max trades per day", minval = 1, group = G_E)
+
+const string G_F = "Filters (off = pure core)"
+BiasMode biasMode = input.enum(BiasMode.off, "Directional bias", group = G_F)
+int   tsLen       = input.int(20, "Momentum lookback (days)", minval = 2, group = G_F)
+
+// ───────── types ─────────
+type Level
+    string name
+    bool   isHigh
+    float  price  = na
+    bool   active = false   // formed and not yet traded through
+
+// ───────── global series (every ta.*/request.* unconditionally) ─────────
+float atr = ta.atr(14)
+bool inKZ     = not na(time(timeframe.period, kzSess, "America/New_York"))
+bool inAsia   = not na(time(timeframe.period, asiaSess, "America/New_York"))
+bool inLondon = not na(time(timeframe.period, londonSess, "America/New_York"))
+bool isEod    = not na(time(timeframe.period, eodSess, "America/New_York"))
+bool newDay   = timeframe.change("D")
+
+// Last completed daily bar only: [1] + lookahead_on (no repainting)
+[pdh, pdl, dClose1, dCloseN] = request.security(syminfo.tickerid, "D",
+     [high[1], low[1], close[1], close[tsLen + 1]], lookahead = barmerge.lookahead_on)
+
+float pl = ta.pivotlow(low, pivLen, pivLen)
+float ph = ta.pivothigh(high, pivLen, pivLen)
+
+// ───────── state: liquidity levels ─────────
+var Level asiaH = Level.new("Asia H", true)
+var Level asiaL = Level.new("Asia L", false)
+var Level lonH  = Level.new("London H", true)
+var Level lonL  = Level.new("London L", false)
+var Level pdH   = Level.new("PDH", true)
+var Level pdL   = Level.new("PDL", false)
+var array<Level> levels = array.from(asiaH, asiaL, lonH, lonL, pdH, pdL)
+
+// Build a session range; it becomes a live liquidity level once the session ends.
+trackRange(Level hi, Level lo, bool inSess, bool enabled) =>
+    if inSess and not inSess[1]
+        hi.price := high, lo.price := low
+        hi.active := false, lo.active := false
+    else if inSess
+        hi.price := math.max(hi.price, high)
+        lo.price := math.min(lo.price, low)
+    else if inSess[1] and enabled
+        hi.active := true, lo.active := true
+    true
+
+trackRange(asiaH, asiaL, inAsia, useAsia)
+trackRange(lonH, lonL, inLondon, useLondon)
+
+var int tradesToday = 0
+if newDay
+    tradesToday := 0
+    if usePD
+        pdH.price := pdh, pdH.active := true
+        pdL.price := pdl, pdL.active := true
+
+// Internal swings for the structure shift (confirmed pivLen bars late — no lookahead)
+var float lastPL = na
+var float lastPH = na
+if not na(pl)
+    lastPL := pl
+if not na(ph)
+    lastPH := ph
+
+// ───────── signal layer: sweep -> reclaim -> MSS+FVG ─────────
+// st: 0 idle | 1 swept, waiting for reclaim | 2 reclaimed, waiting for MSS | 3 entry order working
+var int   st      = 0
+var int   dir     = 0      // +1 long (swept lows), -1 short (swept highs)
+var float lvlPx   = na
+var float ext     = na     // sweep extreme
+var int   sweepBar = na
+var string lvlName = ""
+var float fvgTop  = na
+var float fvgBot  = na
+var int   fvgBar  = na
+var float entryPx = na
+var float stopPx  = na
+var float tpPx    = na
+var int   orderBar = na
+
+int bias = biasMode == BiasMode.tsmom ? (dClose1 > dCloseN ? 1 : -1) : 0
+bool flat = strategy.position_size == 0
+bool sweepEvt = false
+bool mssEvt   = false
+
+// Any level traded through is consumed; one inside the window can start a setup.
+for lv in levels
+    if lv.active and not na(lv.price)
+        bool taken = lv.isHigh ? high > lv.price : low < lv.price
+        if taken
+            lv.active := false
+            int d = lv.isHigh ? -1 : 1
+            if st == 0 and flat and inKZ and tradesToday < maxTrades and (bias == 0 or bias == d)
+                st := 1, dir := d, lvlPx := lv.price, lvlName := lv.name
+                ext := lv.isHigh ? high : low
+                sweepBar := bar_index
+                fvgBar := na
+                sweepEvt := true
+
+if st == 1 or st == 2
+    ext := dir == -1 ? math.max(ext, high) : math.min(ext, low)
+
+// Record the latest FVG in the setup direction formed since the sweep
+bool bearFvg = high < low[2] and (low[2] - high) >= minFvgAtr * atr
+bool bullFvg = low > high[2] and (low - high[2]) >= minFvgAtr * atr
+if st == 2 or st == 1
+    if dir == -1 and bearFvg
+        fvgTop := low[2], fvgBot := high, fvgBar := bar_index
+    if dir == 1 and bullFvg
+        fvgTop := low, fvgBot := high[2], fvgBar := bar_index
+
+if st == 1
+    bool reclaimed = dir == -1 ? close < lvlPx : close > lvlPx
+    if reclaimed
+        st := 2
+    else if bar_index - sweepBar >= reclaimBars
+        st := 0   // accepted beyond the level: breakout, not a sweep
+
+if st == 2
+    bool mss = dir == -1 ? (not na(lastPL) and close < lastPL) : (not na(lastPH) and close > lastPH)
+    if mss and not na(fvgBar)
+        mssEvt := true
+        float buf = stopBuf * syminfo.mintick
+        stopPx := math.round_to_mintick(dir == -1 ? ext + buf : ext - buf)
+        entryPx := switch entryMode
+            EntryMode.ce     => math.round_to_mintick((fvgTop + fvgBot) / 2)
+            EntryMode.edge   => dir == -1 ? fvgBot : fvgTop
+            EntryMode.market => close
+        float risk = math.abs(entryPx - stopPx)
+        bool validSide = dir == -1 ? stopPx > entryPx : stopPx < entryPx
+        if validSide and risk > 0 and risk <= maxStopAtr * atr
+            tpPx := math.round_to_mintick(entryPx + dir * rr * risk)
+            st := 3, orderBar := bar_index
+        else
+            st := 0
+    else if bar_index - sweepBar > mssWindow
+        st := 0
+
+// ───────── execution layer ─────────
+if st == 3 and flat and bar_index == orderBar
+    string id = dir == 1 ? "L" : "S"
+    if entryMode == EntryMode.market
+        strategy.entry(id, dir == 1 ? strategy.long : strategy.short, comment = lvlName + " sweep")
+    else
+        strategy.entry(id, dir == 1 ? strategy.long : strategy.short, limit = entryPx, comment = lvlName + " sweep")
+
+// Cancel a working entry that is stale, invalidated, or whose move already ran
+if st == 3 and flat and bar_index > orderBar
+    bool ran     = dir == -1 ? low <= tpPx : high >= tpPx
+    bool invalid = dir == -1 ? high >= stopPx : low <= stopPx
+    if bar_index - orderBar >= entryWait or ran or invalid or not inKZ
+        strategy.cancel("L"), strategy.cancel("S")
+        st := 0
+
+bool opened = strategy.position_size != 0 and strategy.position_size[1] == 0
+if opened
+    tradesToday += 1
+    st := 0
+
+if st == 3 or not flat
+    strategy.exit("LX", from_entry = "L", stop = stopPx, limit = tpPx, comment_loss = "SL", comment_profit = "TP")
+    strategy.exit("SX", from_entry = "S", stop = stopPx, limit = tpPx, comment_loss = "SL", comment_profit = "TP")
+
+if isEod
+    strategy.cancel_all()
+    strategy.close_all(comment = "EOD")
+    st := 0
+
+// ───────── visuals ─────────
+plot(asiaH.active ? asiaH.price : na, "Asia H", color.new(color.orange, 30), style = plot.style_linebr)
+plot(asiaL.active ? asiaL.price : na, "Asia L", color.new(color.orange, 30), style = plot.style_linebr)
+plot(lonH.active ? lonH.price : na, "London H", color.new(color.blue, 30), style = plot.style_linebr)
+plot(lonL.active ? lonL.price : na, "London L", color.new(color.blue, 30), style = plot.style_linebr)
+plot(pdH.active ? pdH.price : na, "PDH", color.new(color.gray, 20), style = plot.style_linebr, linewidth = 2)
+plot(pdL.active ? pdL.price : na, "PDL", color.new(color.gray, 20), style = plot.style_linebr, linewidth = 2)
+plotshape(sweepEvt and dir == -1, "Sweep high", shape.xcross, location.abovebar, color.red, size = size.tiny)
+plotshape(sweepEvt and dir == 1, "Sweep low", shape.xcross, location.belowbar, color.green, size = size.tiny)
+plotshape(mssEvt and dir == -1, "MSS down", shape.triangledown, location.abovebar, color.red, size = size.small)
+plotshape(mssEvt and dir == 1, "MSS up", shape.triangleup, location.belowbar, color.green, size = size.small)
+bgcolor(inKZ ? color.new(color.yellow, 93) : na, title = "Trade window")

@@ -8,6 +8,7 @@ Research-driven Pine Script algo for NQ futures, built by Claude + Jev (TypeSafe
 - `research/build_graph.py` — Jev pipeline: profiles every node, then judges every shortlisted pair in both directions (typed relation, synergy, same mechanism) and searches for full setups.
 - `research/graph.json` — the resulting knowledge graph.
 - `research/cache/` — cached Jev answers (reruns are free for unchanged questions).
+- `pine/botmax_v0.pine` — first strategy: liquidity sweep -> MSS + FVG reversal (NQ 5m, NY killzone).
 
 ## Setup
 ```

@@ -4,3 +4,4 @@
 !.env.example
 .venv/
 __pycache__/
+backup/
