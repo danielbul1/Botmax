@@ -1,0 +1,190 @@
+{
+ "first": {
+  "choice": "more_data",
+  "probs": {
+   "atr_regime": 0.01,
+   "fvg_any_time": 0.01,
+   "trail_exit": 0.0,
+   "wider_mss": 0.15,
+   "london_window": 0.01,
+   "vwap_fade": 0.02,
+   "tsmom_bias": 0.02,
+   "vwap_trend": 0.05,
+   "fvg_stop": 0.01,
+   "more_data": 0.72
+  },
+  "conf": 0.69
+ },
+ "ranked": [
+  {
+   "id": "more_data",
+   "change": "Rebuild the exact rules in a Python backtester and test them on several years of NQ 5-minute data from Interactive Brokers, keeping TradingView only for final confirmation.",
+   "gain": 2.06,
+   "gain_conf": 0.06,
+   "step": "sample_size",
+   "overfit": 0.72,
+   "why": {
+    "fixes_bottleneck": 0.48,
+    "evidence_based": 0.53,
+    "raises_expectancy": 0.38,
+    "more_trades": 0.8,
+    "cuts_drawdown": 0.55,
+    "fits_ict_logic": 0.81
+   },
+   "priority": 1.32
+  },
+  {
+   "id": "vwap_fade",
+   "change": "Only take a sweep when price is stretched beyond the Session VWAP +/-1 standard deviation band in the sweep direction (sweep of highs above +1 SD for shorts, sweep of lows below -1 SD for longs), and target a return to VWAP.",
+   "gain": 1.75,
+   "gain_conf": 0.0,
+   "step": "setup_quality",
+   "overfit": 0.88,
+   "why": {
+    "fixes_bottleneck": 0.29,
+    "evidence_based": 0.46,
+    "raises_expectancy": 0.4,
+    "more_trades": 0.23,
+    "cuts_drawdown": 0.54,
+    "fits_ict_logic": 0.63
+   },
+   "priority": 0.98
+  },
+  {
+   "id": "vwap_trend",
+   "change": "Only take sweeps that trade in the direction of Session VWAP: longs when price is above VWAP, shorts when below.",
+   "gain": 1.59,
+   "gain_conf": 0.27,
+   "step": "setup_quality",
+   "overfit": 0.87,
+   "why": {
+    "fixes_bottleneck": 0.25,
+    "evidence_based": 0.5,
+    "raises_expectancy": 0.45,
+    "more_trades": 0.14,
+    "cuts_drawdown": 0.56,
+    "fits_ict_logic": 0.62
+   },
+   "priority": 0.9
+  },
+  {
+   "id": "atr_regime",
+   "change": "Only trade when today's volatility is in a normal regime: 5-minute ATR between the 20th and 80th percentile of its last 60 days.",
+   "gain": 1.55,
+   "gain_conf": 0.29,
+   "step": "setup_quality",
+   "overfit": 0.84,
+   "why": {
+    "fixes_bottleneck": 0.2,
+    "evidence_based": 0.57,
+    "raises_expectancy": 0.41,
+    "more_trades": 0.19,
+    "cuts_drawdown": 0.58,
+    "fits_ict_logic": 0.59
+   },
+   "priority": 0.9
+  },
+  {
+   "id": "tsmom_bias",
+   "change": "Only take sweeps in the direction of daily time-series momentum (today's close vs 20 days ago), which is already coded but switched off.",
+   "gain": 1.54,
+   "gain_conf": 0.28,
+   "step": "setup_quality",
+   "overfit": 0.86,
+   "why": {
+    "fixes_bottleneck": 0.27,
+    "evidence_based": 0.48,
+    "raises_expectancy": 0.42,
+    "more_trades": 0.15,
+    "cuts_drawdown": 0.54,
+    "fits_ict_logic": 0.58
+   },
+   "priority": 0.88
+  },
+  {
+   "id": "trail_exit",
+   "change": "Replace the fixed 2R target with a partial exit at 1R and an ATR (Chandelier-style) trailing stop on the rest.",
+   "gain": 1.23,
+   "gain_conf": 0.28,
+   "step": "exit_risk",
+   "overfit": 0.86,
+   "why": {
+    "fixes_bottleneck": 0.16,
+    "evidence_based": 0.48,
+    "raises_expectancy": 0.42,
+    "more_trades": 0.25,
+    "cuts_drawdown": 0.58,
+    "fits_ict_logic": 0.6
+   },
+   "priority": 0.7
+  },
+  {
+   "id": "fvg_stop",
+   "change": "Place the stop beyond the fair value gap's first candle instead of beyond the sweep extreme, making risk smaller so fewer setups are skipped for a wide stop and the R multiple improves.",
+   "gain": 1.0,
+   "gain_conf": 0.38,
+   "step": "exit_risk",
+   "overfit": 0.87,
+   "why": {
+    "fixes_bottleneck": 0.32,
+    "evidence_based": 0.28,
+    "raises_expectancy": 0.39,
+    "more_trades": 0.33,
+    "cuts_drawdown": 0.46,
+    "fits_ict_logic": 0.36
+   },
+   "priority": 0.56
+  },
+  {
+   "id": "fvg_any_time",
+   "change": "Accept a fair value gap that forms at the sweep bar or up to 3 bars before the market structure shift, instead of only after the sweep.",
+   "gain": 0.92,
+   "gain_conf": 0.47,
+   "step": "setup_frequency",
+   "overfit": 0.87,
+   "why": {
+    "fixes_bottleneck": 0.26,
+    "evidence_based": 0.3,
+    "raises_expectancy": 0.26,
+    "more_trades": 0.36,
+    "cuts_drawdown": 0.32,
+    "fits_ict_logic": 0.5
+   },
+   "priority": 0.52
+  },
+  {
+   "id": "london_window",
+   "change": "Also trade the London killzone (02:00-05:00 New York) with Asia and previous-day levels, roughly doubling the number of setups.",
+   "gain": 0.44,
+   "gain_conf": 0.56,
+   "step": "sample_size",
+   "overfit": 0.87,
+   "why": {
+    "fixes_bottleneck": 0.38,
+    "evidence_based": 0.37,
+    "raises_expectancy": 0.21,
+    "more_trades": 0.44,
+    "cuts_drawdown": 0.28,
+    "fits_ict_logic": 0.57
+   },
+   "priority": 0.25
+  },
+  {
+   "id": "wider_mss",
+   "change": "Allow up to 40 bars for the market structure shift instead of 15, since the grid showed it triples the setups that reach the MSS step.",
+   "gain": 0.26,
+   "gain_conf": 0.74,
+   "step": "setup_frequency",
+   "overfit": 0.88,
+   "why": {
+    "fixes_bottleneck": 0.55,
+    "evidence_based": 0.23,
+    "raises_expectancy": 0.15,
+    "more_trades": 0.34,
+    "cuts_drawdown": 0.21,
+    "fits_ict_logic": 0.45
+   },
+   "priority": 0.15
+  }
+ ]
+}

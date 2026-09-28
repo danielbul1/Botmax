@@ -1,0 +1,1 @@
+{"first": {"choice": "more_data", "probs": {"atr_regime": 0.01, "fvg_any_time": 0.01, "trail_exit": 0.0, "wider_mss": 0.15, "london_window": 0.01, "vwap_fade": 0.02, "tsmom_bias": 0.02, "vwap_trend": 0.05, "fvg_stop": 0.01, "more_data": 0.72}, "conf": 0.69}}
