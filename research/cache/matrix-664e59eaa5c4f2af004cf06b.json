@@ -1,0 +1,1 @@
+{"k0|clean": {"p": 0.18}, "k0|use": {"choice": "filters", "probs": {"confirms": 0.01, "times": 0.0, "biases": 0.0, "filters": 0.98, "conflicts": 0.01, "locates": 0.0, "manages_risk": 0.0, "unrelated": 0.0, "implements": 0.0}, "conf": 0.98}, "k0|improve": {"score": 1.84, "conf": 0.79}}

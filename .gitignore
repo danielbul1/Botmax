@@ -5,3 +5,4 @@
 .venv/
 __pycache__/
 backup/
+research/matrix_run.log
