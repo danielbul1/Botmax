@@ -1,0 +1,1056 @@
+[
+  {
+    "id": "ict-swing-points",
+    "name": "Swing Points hierarchy (STH/ITH/LTH, STL/ITL/LTL; ICT swing high/low)",
+    "source": "ICT",
+    "url": "https://innercircletrader.net/tutorials/ict-advance-market-structure/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "Defines swing highs and lows with a 3-candle rule and ranks them into short-, intermediate- and long-term tiers. It is the foundation for market structure, liquidity levels and dealing ranges in every other ICT concept.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "STH at bar i: high[i] > high[i-1] and high[i] > high[i+1] (ta.pivothigh(high,1,1)). STL mirror with lows. ITH: an STH whose nearest prior STH and next STH are both lower. LTH: an ITH whose nearest prior ITH and next ITH are both lower (ICT adds that LTHs typically form at a higher-timeframe PD array - discretionary). Mirror for ITL/LTL. Ties (equal highs / inside bars) are not specified by the source; implementations must choose strict > or >=.",
+    "outputs": "Labels STH/ITH/LTH and STL/ITL/LTL at pivot bars; arrays of swing prices for downstream structure/liquidity modules.",
+    "signal_type": "structure",
+    "timeframes": "All; LTH/LTL on 1H-D, STH/STL on 1-15m",
+    "repaints": "conditional - STH/STL confirmed 1 bar late; ITH needs the next STH to print, LTH needs the next ITH, so higher tiers confirm many bars late (no repaint once confirmed if drawn back at pivot bar, but the label appears retroactively).",
+    "weaknesses": "Many practitioners use larger pivot lengths (e.g., 5/5) instead of ICT's 1/1, changing everything downstream. Tie handling unspecified. LTH's 'at a HTF PD array' condition is subjective.",
+    "related": [
+      "short-term high",
+      "intermediate-term high",
+      "long-term high",
+      "3-candle swing",
+      "fractal"
+    ]
+  },
+  {
+    "id": "ict-break-of-structure",
+    "name": "Break of Structure (BOS)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/break-of-structure/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A with-trend break of the most recent significant swing: in an uptrend price trades through the last swing high, in a downtrend through the last swing low. It is read as trend continuation.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Track trend state from swing sequence (HH+HL = up, LH+LL = down). Bullish BOS: trend==up and close > lastSwingHigh (common filter: body close, not wick). Bearish BOS: trend==down and close < lastSwingLow. Stricter variant: breaking candle must also qualify as displacement (e.g., body > k*ATR and leaves an FVG). Each swing can be broken once.",
+    "outputs": "Horizontal line from broken swing to break bar labelled BOS; trend-state series.",
+    "signal_type": "structure",
+    "timeframes": "All; bias on 1H-D, execution 1-15m",
+    "repaints": "conditional - relies on confirmed swings (pivot lag); the break itself is final on bar close if close-based, can flicker intrabar if wick-based.",
+    "weaknesses": "Wick vs close rule and swing length are unspecified by ICT; 'significant' swing is subjective. BOS is more an SMC-community label; ICT himself emphasises MSS and liquidity rather than BOS counting.",
+    "related": [
+      "BOS",
+      "continuation break",
+      "structure break"
+    ]
+  },
+  {
+    "id": "ict-market-structure-shift",
+    "name": "Market Structure Shift (MSS; Change of Character / CHoCH)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/blog/market-structure-shifts-mss-in-ict-trading/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A counter-trend swing break that signals a potential reversal of short-term delivery. ICT's MSS typically follows a liquidity sweep and must occur with displacement. CHoCH is the SMC-community term for the same idea.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Bearish MSS: after price makes a high (ideally sweeping buy-side liquidity), close < most recent swing low that formed the leg into that high (usually the last STL), with displacement (large-body candle(s), often leaving a bearish FVG). Bullish MSS mirror: close > most recent STH after a low / SSL sweep. ICT Concepts [LuxAlgo] defines MSS = break of swing low in uptrend or swing high in downtrend.",
+    "outputs": "Line at broken swing + 'MSS' label; reversal flag used to arm FVG/OTE entries.",
+    "signal_type": "reversal",
+    "timeframes": "1-15m intraday (2022 model), also 1H-D",
+    "repaints": "conditional - swing confirmation lag; once close-confirmed it is fixed.",
+    "weaknesses": "Contested: some treat MSS=CHoCH (first counter-trend break), others require displacement + prior sweep for MSS, others say CHoCH is 'minor' and MSS 'major' (LuxAlgo notes no universal rule). Close vs wick and which swing (short-term vs intermediate) vary widely.",
+    "related": [
+      "CHoCH",
+      "change of character",
+      "shift in market structure",
+      "SMS"
+    ]
+  },
+  {
+    "id": "ict-cisd",
+    "name": "Change in State of Delivery (CISD)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/change-in-state-of-delivery/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A candle-body test that flags the moment delivery flips direction, usually right after a liquidity sweep. It fires earlier than an MSS because it needs no swing break, only a close through the open of the last same-direction candle series.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Bullish CISD: after a down leg into a low (ideally a sweep), find the final unbroken run of consecutive down-close candles (close<open) into the low; level = open of the FIRST candle in that run. Signal when a later candle CLOSES > level (wicks do not count). Bearish mirror: run of up-close candles into a high, level = open of first candle of run, signal on close < level. Variant: some use the open of the nearest (last) candle in the run.",
+    "outputs": "Horizontal CISD level from series open; marker on the confirming close; optional FVG left by the confirming candles as entry.",
+    "signal_type": "reversal",
+    "timeframes": "1-15m intraday; also 1H/4H",
+    "repaints": "conditional - level is only known once the extreme is established; the signal is final on bar close.",
+    "weaknesses": "Less standardised than MSS; first-candle vs last-candle open variant; many CISDs fail without HTF context; 'series' with doji/inside bars ambiguous.",
+    "related": [
+      "CISD",
+      "change in the state of delivery",
+      "opening price series close"
+    ]
+  },
+  {
+    "id": "ict-displacement",
+    "name": "Displacement",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/displacement/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A fast, one-sided move made of large-bodied candles with small wicks closing in the same direction, typically leaving FVGs. ICT uses it to validate MSS, order blocks and FVGs as institutional rather than random.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "No official threshold (source explicitly says discretionary). Common codeable proxies: body=|close-open|; displacement bar if body > k*ATR(n) (k~1.5-2) or body > mean(body,n)+m*stdev(body,n), body/range >= ~0.6-0.7, and the move creates an FVG; displacement leg = >=2 consecutive same-direction such bars. ICT Concepts [LuxAlgo]: successive same-sentiment candles with large bodies and short shadows.",
+    "outputs": "Boolean per bar / leg; highlighted candles; used as a filter for other modules.",
+    "signal_type": "momentum",
+    "timeframes": "All; most used 1-15m",
+    "repaints": "no - computed on closed bar (intrabar may flicker before close).",
+    "weaknesses": "Entirely subjective in ICT teaching ('if you have to squint it is not displacement'); any numeric threshold is an implementer's choice.",
+    "related": [
+      "energetic move",
+      "impulse",
+      "expansion"
+    ]
+  },
+  {
+    "id": "ict-fair-value-gap",
+    "name": "Fair Value Gap (FVG; BISI bullish / SIBI bearish; imbalance, inefficiency; Consequent Encroachment)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/fair-value-gap/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A three-candle imbalance where the wicks of candle 1 and candle 3 do not overlap, leaving a price span traded in only one direction. Price often returns to rebalance it, frequently to its 50% level (consequent encroachment), and the zone is used as support/resistance and entry.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Bars c1=[2], c2=[1], c3=[0]. Bullish FVG (BISI): low[0] > high[2]; zone = [high[2], low[0]]. Bearish FVG (SIBI): high[0] < low[2]; zone = [high[0], low[2]]. CE = (top+bottom)/2. Optional filters: c2 is displacement / gap size >= x*ATR or min ticks. Mitigation: price trades into zone (touch), partial (to CE), full fill (through far edge). Invalidation commonly = body close beyond far edge (-> inversion FVG).",
+    "outputs": "Boxes extended right until filled/invalidated; CE line; fill state; alerts on retest.",
+    "signal_type": "zone",
+    "timeframes": "All; HTF (1H-D) as draws, LTF (1-5m) for entries",
+    "repaints": "no - fixed once candle 3 closes (live candle 3 can create/erase a provisional gap intrabar).",
+    "weaknesses": "Very frequent pattern; low-timeframe gaps are mostly noise without displacement/context filters. Fill definition (touch vs CE vs full) varies. Some count gaps with bodies-only.",
+    "related": [
+      "FVG",
+      "BISI",
+      "SIBI",
+      "imbalance",
+      "inefficiency",
+      "consequent encroachment",
+      "CE",
+      "immediate rebalance"
+    ]
+  },
+  {
+    "id": "ict-inversion-fvg",
+    "name": "Inversion Fair Value Gap (IFVG; inverted FVG)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/inversion-fvg/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "An FVG that price closes through, after which the same zone is expected to act with the opposite polarity (a failed bullish gap becomes resistance, a failed bearish gap becomes support).",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Bullish FVG [b,t] inverts bearish when a candle CLOSES < b (body close beyond far side; wick-through is a probe only). Bearish FVG [b,t] inverts bullish when close > t. Afterwards: bearish IFVG = short zone on retest from below (high enters [b,t], closes below); bullish IFVG mirror. Invalidation: close back through the zone. Lenient variant: close beyond CE instead of far edge.",
+    "outputs": "Recoloured box after inversion; retest signals; invalidation.",
+    "signal_type": "zone",
+    "timeframes": "1-15m intraday mostly",
+    "repaints": "no - inversion decided on bar close.",
+    "weaknesses": "Strictness varies (full vs CE close). Many inversions immediately fail; value depends on context (post-sweep).",
+    "related": [
+      "IFVG",
+      "iFVG",
+      "inverted FVG",
+      "flipped FVG"
+    ]
+  },
+  {
+    "id": "ict-balanced-price-range",
+    "name": "Balanced Price Range (BPR)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/balanced-price-range/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "The overlap of a bullish and a bearish FVG at the same prices, formed when price displaces one way then displaces back through the same area. The intersection (not union) is treated as a zone governed by the newer displacement.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Given an older FVG A=[a_b,a_t] and a newer opposite-direction FVG B=[b_b,b_t] forming after A: overlap_bottom = max(a_b,b_b), overlap_top = min(a_t,b_t); BPR exists if overlap_top > overlap_bottom. Bias = direction of B (newer): newer bearish -> resistance, newer bullish -> support. Invalidation: body close through the far edge. (Some implementations limit how many bars apart A and B may be.)",
+    "outputs": "Box of overlap with midpoint; directional colour.",
+    "signal_type": "zone",
+    "timeframes": "1-15m intraday; also HTF",
+    "repaints": "no - fixed once second FVG completes.",
+    "weaknesses": "Max separation between the two gaps is unspecified; overlap is often very thin.",
+    "related": [
+      "BPR",
+      "overlapping FVGs"
+    ]
+  },
+  {
+    "id": "ict-volume-imbalance",
+    "name": "Volume Imbalance (VI)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/volume-imbalance/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A two-candle body gap: the close of one candle and the open of the next leave a span with no real-body overlap while the wicks still overlap. Despite the name no volume is used; it is a micro-inefficiency that price tends to rebalance.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Bullish VI (bars [1],[0]): min(open[0],close[0]) > max(open[1],close[1]) AND low[0] <= high[1] (wicks overlap); zone = [max(open[1],close[1]), min(open[0],close[0])]. Commonly also both candles bullish. Bearish mirror: max(open[0],close[0]) < min(open[1],close[1]) AND high[0] >= low[1]. If wicks do not overlap it is a gap, not a VI.",
+    "outputs": "Thin boxes between bodies; fill tracking.",
+    "signal_type": "zone",
+    "timeframes": "1-15m (appear often on index futures at session opens)",
+    "repaints": "no - fixed on bar close.",
+    "weaknesses": "Frequent and small; some sources require same-colour candles, others not. The name misleads (no volume).",
+    "related": [
+      "VI",
+      "body gap"
+    ]
+  },
+  {
+    "id": "ict-liquidity-void",
+    "name": "Liquidity Void (LV)",
+    "source": "ICT",
+    "url": "https://innercircletrader.net/tutorials/master-ict-liquidity-void/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A multi-candle, one-directional displacement leg with little or no wick overlap, typically launched from consolidation and containing one or more FVGs. Price is expected to reprice back into it eventually, often to its 50%.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Find a run of N>=2 (often 3+) consecutive same-direction displacement candles where each candle's wick range barely/does not overlap the previous candle (bullish: low[i] >= high[i-1] or overlap < small %), no counter-close inside the run. Void zone = from run start (low of first candle) to run end (high of last candle) for bullish; CE = midpoint. Contains the FVGs of the run. (Operational thresholds are implementer choice - uncertain.)",
+    "outputs": "Large box over the leg; CE line; fill %.",
+    "signal_type": "zone",
+    "timeframes": "15m-D",
+    "repaints": "no - defined after the leg's candles close (leg end only known once a counter candle prints).",
+    "weaknesses": "Loosely defined; some sources use 'liquidity void' as a synonym for a large FVG or for vacuum block. Overlap threshold unspecified.",
+    "related": [
+      "LV",
+      "void",
+      "runaway gap"
+    ]
+  },
+  {
+    "id": "ict-vacuum-block",
+    "name": "Vacuum Block (event/opening gap)",
+    "source": "ICT",
+    "url": "https://innercircletrader.net/tutorials/ict-vacuum-block-opening-gaps/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A true price gap with no trading inside it, created by a high-volatility event (FOMC, NFP, CPI) or a session/week open. Its 50% (CE) is watched for reactions on retrace.",
+    "inputs": [
+      "ohlc",
+      "time/session"
+    ],
+    "core_math": "Bullish vacuum: low[0] > high[1] (no wick overlap between consecutive bars, true gap), zone=[high[1], low[0]]; bearish: high[0] < low[1]. Optionally require bar[0] to be at an event time or session open. CE = midpoint. Entry per source: wait for retrace to CE then LTF MSS; stop beyond gap edge.",
+    "outputs": "Gap box + CE; retest alerts.",
+    "signal_type": "zone",
+    "timeframes": "4H-D to mark; 1-5m for entries",
+    "repaints": "no - fixed once the gapping bar closes.",
+    "weaknesses": "Overlaps with NDOG/NWOG and liquidity void; sources disagree whether a news-driven single-candle spike (no literal gap) counts.",
+    "related": [
+      "event gap",
+      "news gap"
+    ]
+  },
+  {
+    "id": "ict-new-day-opening-gap",
+    "name": "New Day Opening Gap (NDOG)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/opening-gap/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "On CME futures, the gap between the daily close at 17:00 NY and the reopen at 18:00 NY after the maintenance break. It is treated as a PD array with a CE (50%) level.",
+    "inputs": [
+      "ohlc",
+      "time/session"
+    ],
+    "core_math": "For each trading day: c = close of last bar ending at 17:00 America/New_York; o = open of first bar at/after 18:00. NDOG zone = [min(c,o), max(c,o)], CE = (c+o)/2; bullish if o>c. Keep last N (e.g., 5) and extend right until filled. Only meaningful on instruments with a daily halt (CME futures); FX/crypto usually give ~0 gap.",
+    "outputs": "Boxes/lines for recent NDOGs with CE.",
+    "signal_type": "level",
+    "timeframes": "1-15m intraday",
+    "repaints": "no - fixed at the 18:00 open.",
+    "weaknesses": "Tiny on many days; ICT-course definition vs crypto/FX adaptations differ; needs exchange-session-aware time handling (DST).",
+    "related": [
+      "NDOG",
+      "daily opening gap",
+      "opening gap"
+    ]
+  },
+  {
+    "id": "ict-new-week-opening-gap",
+    "name": "New Week Opening Gap (NWOG)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/opening-gap/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "The gap between Friday's close (17:00 NY) and Sunday's reopen (18:00 NY). ICT marks the last several NWOGs as long-lived reference zones with a CE; price is said to gravitate to and react at them.",
+    "inputs": [
+      "ohlc",
+      "time/session"
+    ],
+    "core_math": "c = Friday close at 17:00 NY; o = Sunday 18:00 NY first open. NWOG zone = [min(c,o), max(c,o)], CE midpoint. Keep last 5 NWOGs (common practice). Same code on daily data: gap between Friday close and next week's first open.",
+    "outputs": "Boxes/lines for last ~5 NWOGs with CE, quadrants optional.",
+    "signal_type": "level",
+    "timeframes": "1H-D reference; used intraday",
+    "repaints": "no - fixed at Sunday open.",
+    "weaknesses": "LuxAlgo time-anchor page describes weekly open as 00:00 Sunday which conflicts with the Friday-close/Sunday-18:00 definition - use the gap definition. Gaps can be tiny.",
+    "related": [
+      "NWOG",
+      "weekly opening gap",
+      "weekend gap"
+    ]
+  },
+  {
+    "id": "ict-opening-range-gap",
+    "name": "Opening Range Gap (ORG; RTH gap)",
+    "source": "ICT",
+    "url": "https://www.tradingview.com/script/bts7EGX8-ICT-Opening-Range-Gap-1st-Presented-FVG-tristanlee85/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "For US index products, the gap between the prior regular-session close (16:00/16:15 settlement) and the 09:30 NY open. ICT treats its CE and quadrants as intraday reference levels and a premium/discount frame.",
+    "inputs": [
+      "ohlc",
+      "time/session"
+    ],
+    "core_math": "prevRTHclose = close of last RTH bar (16:00 NY for cash/most; futures settlement ~16:15 per some scripts); rthOpen = open of 09:30 bar. ORG = [min,max], CE = midpoint, quadrants at 25/75%. Open above prior close = premium ORG, below = discount.",
+    "outputs": "Box + CE + quadrants for the session.",
+    "signal_type": "level",
+    "timeframes": "1-5m intraday indices",
+    "repaints": "no - fixed at 09:30.",
+    "weaknesses": "Which close (16:00 vs 16:15 settlement) varies by source/instrument. Not applicable to 24h markets.",
+    "related": [
+      "ORG",
+      "RTH gap",
+      "regular trading hours gap"
+    ]
+  },
+  {
+    "id": "ict-first-presented-fvg",
+    "name": "First Presented Fair Value Gap (FPFVG; 1st presented FVG)",
+    "source": "ICT",
+    "url": "https://www.tradingview.com/script/bts7EGX8-ICT-Opening-Range-Gap-1st-Presented-FVG-tristanlee85/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "The first qualifying FVG formed in the New York opening range (09:30-10:00 NY). It is kept as a session reference that price may return to and react at later in the day.",
+    "inputs": [
+      "ohlc",
+      "time/session"
+    ],
+    "core_math": "Within bars whose time is in [09:30,10:00) NY (the candle-3 close must be in window; exact rule for c1 before 09:30 varies), take the first FVG (low[0]>high[2] or high[0]<low[2]). Optional qualification: displacement candle c2 takes out high/low of preceding few candles, min size. Extend zone and CE through the session. (Some variants apply the same idea at 18:00 or midnight opens.)",
+    "outputs": "Single box + CE per session.",
+    "signal_type": "zone",
+    "timeframes": "1m-5m",
+    "repaints": "no - fixed once formed.",
+    "weaknesses": "'First meaningful' is subjective; timeframe choice (1m vs 5m) gives different gaps; newer ICT concept with fewer sources.",
+    "related": [
+      "FPFVG",
+      "opening range FVG"
+    ]
+  },
+  {
+    "id": "ict-order-block",
+    "name": "Order Block (OB; bullish/bearish; mean threshold)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/bullish-bearish-order-block/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "The last opposite-colour candle (or cluster) before a displacement move that breaks structure. A bullish OB is the last down-close candle before an impulsive rally; a bearish OB the last up-close candle before a decline. Price is expected to return to it and react.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Bullish OB: when a displacement leg up closes above a prior swing high (BOS/MSS), scan back from the leg start for the last bar with close<open; zone = [low, high] (full range) or [low, open] / body variants; mean threshold MT = (high+low)/2 (ICT often uses body open-to-low; conventions vary). Bearish mirror (last close>open before displacement down through a swing low). Consecutive same-colour candles may be merged. Valid while unmitigated; invalidation commonly close below OB low (bullish) / MT for strict variant. Stronger if the OB swept liquidity.",
+    "outputs": "Boxes with MT line; state (fresh/mitigated/broken); retest signals.",
+    "signal_type": "zone",
+    "timeframes": "All; 1H-D for draws, 1-15m for entries",
+    "repaints": "conditional - OB is only identified after the later displacement/structure break, so it appears retroactively (drawn back in time); no change once confirmed.",
+    "weaknesses": "Most loosely used ICT term: full range vs body vs open-to-wick, requirement of BOS/sweep/FVG varies; many retail scripts just use pivots. No quantitative definition of displacement.",
+    "related": [
+      "OB",
+      "bullish order block",
+      "bearish order block",
+      "mean threshold",
+      "reclaimed order block"
+    ]
+  },
+  {
+    "id": "ict-breaker-block",
+    "name": "Breaker Block (breaker)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/breaker-block/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A failed order block from a swing that first ran liquidity beyond a prior extreme; once price breaks back through it with displacement, the zone flips polarity. In a bullish breaker, the failed bearish leg (which swept a prior low) is reclaimed and its zone is then expected to act as support on retest.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Bullish breaker (per LuxAlgo/ICT): swing low L1 -> swing high H1 -> price trades below L1 (sweep, new low L2) -> price rallies and CLOSES above H1 with displacement. Breaker zone = the candle(s) forming H1's leg, conventionally the last up-close candle(s) before the drop from H1 (the old bearish OB) - LuxAlgo phrases it as the down-closing candles of the failed leg; bodies vs full range varies. Long on retest of the zone from above; invalidation close below zone. Bearish breaker mirror: H1 -> L1 -> new high above H1 (sweep) -> close below L1; zone = last down-close candle(s) before the rally from L1, short on retest.",
+    "outputs": "Breaker boxes, retest entry signals.",
+    "signal_type": "zone",
+    "timeframes": "1-15m intraday, also 1H-4H",
+    "repaints": "conditional - known only after the structure break; drawn retroactively.",
+    "weaknesses": "Sources disagree on which candles form the zone (the old opposite OB vs candles of the failed leg) and on body vs range. Requires sweep beyond prior extreme - otherwise it is a mitigation block.",
+    "related": [
+      "breaker",
+      "failed order block",
+      "flipped order block"
+    ]
+  },
+  {
+    "id": "ict-mitigation-block",
+    "name": "Mitigation Block",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/mitigation-block/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "Same role flip as a breaker but without the liquidity raid: the final swing fails short of the prior extreme (lower high / higher low) before structure breaks. The block of the failed swing is then used as resistance/support where trapped traders 'mitigate' losses.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Bearish mitigation block: swing high H1 -> swing low L1 -> lower high H2 < H1 (no sweep) -> close < L1. Zone = last opposing (up-close) candle(s) that launched the failed swing to H2 (full range or body). Short on retest. Bullish mirror: L1 -> H1 -> higher low L2 > L1 -> close > H1; zone = last down-close candle(s) before the rally from L2. If the swing exceeds the prior extreme, classify as breaker instead.",
+    "outputs": "Zone boxes, retest signals.",
+    "signal_type": "zone",
+    "timeframes": "1-15m, 1H-4H",
+    "repaints": "conditional - known only after the structure break.",
+    "weaknesses": "Contested: some sources (and LuxAlgo's own OB page) use 'mitigation block' loosely to mean any order block price has returned to; others use the failure-swing definition above.",
+    "related": [
+      "mitigation",
+      "failure swing block"
+    ]
+  },
+  {
+    "id": "ict-rejection-block",
+    "name": "Rejection Block",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/rejection-block/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A zone built from the long wick at a swing extreme, typically after a sweep. It spans from the candle body to the wick tip; price revisiting that span is expected to be rejected, with a tight stop beyond the wick.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Bearish RB at a swing high bar i (pivot high, ideally sweeping prior high): zone = [max(open[i],close[i]), high[i]]; require upper wick large (e.g., upper wick > body or > x*ATR). Bullish RB at swing low: zone = [low[i], min(open[i],close[i])]. Some ICT variants use the body extremes of the cluster of wicked candles. Entry on revisit; invalidation beyond wick extreme.",
+    "outputs": "Wick-span boxes at swing extremes.",
+    "signal_type": "zone",
+    "timeframes": "1H-D mainly, also LTF",
+    "repaints": "conditional - swing confirmation lag (pivot needs right bars).",
+    "weaknesses": "Wick-size threshold unspecified; ICT's original teaching refers to candle bodies of multiple wicks at the high - implementations differ.",
+    "related": [
+      "RB",
+      "wick block"
+    ]
+  },
+  {
+    "id": "ict-propulsion-block",
+    "name": "Propulsion Block",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/propulsion-block/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A candle that trades back into an existing order block, respects it and drives away with energy; that candle becomes a new, tighter tradeable block used for continuation entries.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Bullish: existing bullish OB [obL,obH], MT=(obL+obH)/2. A down-close candle j with low[j] <= obH (commonly reaching upper half/MT) and close[j] > obL (no close through far side), followed by displacement up (ideally leaving an FVG). Propulsion zone = candle j's range (or its body); expected to hold at its MT. Bearish mirror.",
+    "outputs": "Nested boxes over parent OB.",
+    "signal_type": "zone",
+    "timeframes": "1-15m, 1H",
+    "repaints": "conditional - confirmed only after the departure displacement.",
+    "weaknesses": "Rarer and less documented; many retail sources conflate with 'reclaimed OB'. Depends on OB definition upstream.",
+    "related": [
+      "PB",
+      "nested order block"
+    ]
+  },
+  {
+    "id": "ict-buy-sell-side-liquidity",
+    "name": "Buy-side / Sell-side Liquidity (BSL / SSL; liquidity pools; draw on liquidity)",
+    "source": "ICT",
+    "url": "https://innercircletrader.net/tutorials/ict-abbreviations/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "Buy-side liquidity is resting buy stops above old highs; sell-side liquidity is resting sell stops below old lows. ICT views price as being delivered from one pool to another, and the pool price is expected to reach next is the 'draw on liquidity'.",
+    "inputs": [
+      "ohlc",
+      "higher-timeframe"
+    ],
+    "core_math": "BSL levels = unswept swing highs (STH/ITH/LTH, PDH, PWH, session highs, EQH); SSL = unswept swing lows. Level stays active until high > level (BSL taken) or low < level (SSL taken). Draw on liquidity (DOL) heuristic: nearest unswept HTF pool in the bias direction, or opposite pool after a sweep.",
+    "outputs": "Lines at active BSL/SSL, removed/greyed when swept; DOL target.",
+    "signal_type": "liquidity",
+    "timeframes": "All; HTF pools drive LTF trades",
+    "repaints": "conditional - pools come from confirmed swings (lag); sweep state is final on touch.",
+    "weaknesses": "Stop placement is assumed, not observed; choosing the 'draw' is discretionary.",
+    "related": [
+      "BSL",
+      "SSL",
+      "liquidity pool",
+      "draw on liquidity",
+      "DOL",
+      "resting liquidity",
+      "old highs / old lows"
+    ]
+  },
+  {
+    "id": "ict-equal-highs-lows",
+    "name": "Equal Highs / Equal Lows (EQH/EQL; relative equal highs/lows)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/equal-highs-lows-as-liquidity/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "Two or more swing highs (or lows) at nearly the same price, read as a concentrated pool of stops ('engineered liquidity') that price is likely to run.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Two confirmed swing highs p1,p2 (with a meaningful pullback between) are equal if |p1-p2| <= tol. ICT Concepts [LuxAlgo]: tol = ATR(10)/(10/margin) i.e. ATR(10)*margin/10. Alternatives: few ticks/pips. Level = max(p1,p2) for EQH (min for EQL); active until swept.",
+    "outputs": "Dashed line/box connecting equal swings, labelled EQH/EQL; sweep alerts.",
+    "signal_type": "liquidity",
+    "timeframes": "All",
+    "repaints": "conditional - requires confirmed pivots.",
+    "weaknesses": "No official tolerance; 'relative' equality is subjective; slightly ascending/descending highs also qualify per some sources.",
+    "related": [
+      "EQH",
+      "EQL",
+      "relative equal highs",
+      "REH",
+      "REL",
+      "engineered liquidity",
+      "double top/bottom liquidity"
+    ]
+  },
+  {
+    "id": "ict-liquidity-sweep",
+    "name": "Liquidity Sweep (stop hunt, stop run, raid, liquidity grab; swing failure)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/liquidity-sweep/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "Price trades through a level where stops cluster (swing high/low, EQH/EQL, session or prior-day extreme) and then closes back inside the old range instead of holding beyond it. It is the trigger condition for most ICT reversal models.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Bearish sweep of BSL level L: high > L and close < L on the same bar (strict) or within k bars (lenient). Bullish sweep of SSL: low < L and close > L. Contrast 'run' (ICT: liquidity run/breakout): close holds beyond L with continuation. Often combined with subsequent MSS/CISD for confirmation.",
+    "outputs": "Markers at swept levels; sweep flag passed to reversal models.",
+    "signal_type": "liquidity",
+    "timeframes": "All",
+    "repaints": "no - on bar close; conditional if multi-bar reclaim window used.",
+    "weaknesses": "Sweep vs genuine breakout only known in hindsight; same-bar vs multi-bar close-back rule varies.",
+    "related": [
+      "stop hunt",
+      "stop run",
+      "raid",
+      "liquidity grab",
+      "SFP",
+      "swing failure pattern",
+      "false breakout"
+    ]
+  },
+  {
+    "id": "ict-internal-external-range-liquidity",
+    "name": "Internal vs External Range Liquidity (IRL / ERL)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/internal-vs-external-range-liquidity/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "Splits targets relative to a dealing range: external liquidity sits beyond the range high/low (stops), internal liquidity sits inside it (FVGs, OBs, minor swings). ICT frames price as alternating between taking external liquidity and rebalancing internal liquidity.",
+    "inputs": [
+      "ohlc",
+      "higher-timeframe"
+    ],
+    "core_math": "Dealing range = [swingLow, swingHigh] (HTF). ERL = the range extremes (BSL above high, SSL below low). IRL = unfilled FVGs/OBs/minor swings inside. State machine: after an ERL sweep, expect move to nearest IRL (FVG fill); after IRL fill, target opposite ERL.",
+    "outputs": "Classification of each level as IRL/ERL; next-target selection.",
+    "signal_type": "liquidity",
+    "timeframes": "Range defined on 1H-D; applied intraday",
+    "repaints": "conditional - dealing range depends on confirmed swings.",
+    "weaknesses": "'A framing device, not a law' - breakouts skip the return leg; range selection is subjective.",
+    "related": [
+      "IRL",
+      "ERL",
+      "external range liquidity",
+      "internal range liquidity"
+    ]
+  },
+  {
+    "id": "ict-previous-day-week-high-low",
+    "name": "Previous Day / Week High & Low (PDH/PDL, PWH/PWL; also previous month)",
+    "source": "ICT",
+    "url": "https://innercircletrader.net/tutorials/complete-ict-trading-strategy-2022/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "The prior day's and prior week's extremes are ICT's primary external liquidity references and daily/weekly bias anchors. In the 2022 model the previous day high/low is listed first in the liquidity-priority order.",
+    "inputs": [
+      "ohlc",
+      "higher-timeframe",
+      "time/session"
+    ],
+    "core_math": "PDH = request.security(sym,'D',high[1],lookahead_on) (or compute over NY day 18:00-17:00 / midnight-midnight per convention); PDL likewise; PWH/PWL with 'W'. Swept when high > PDH / low < PDL; track taken/untaken.",
+    "outputs": "Horizontal lines, sweep markers.",
+    "signal_type": "level",
+    "timeframes": "Intraday (1-60m)",
+    "repaints": "no - prior completed period (must use [1] with lookahead to avoid future leak).",
+    "weaknesses": "Day boundary convention (exchange session vs NY midnight vs 17:00) changes values.",
+    "related": [
+      "PDH",
+      "PDL",
+      "PWH",
+      "PWL",
+      "PMH",
+      "PML",
+      "prior day high low"
+    ]
+  },
+  {
+    "id": "ict-session-highs-lows",
+    "name": "Session Highs/Lows (Asian range, London high/low, NY session liquidity)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/ict-session-ranges/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "The high and low of each session (Asia, London, NY) become liquidity pools that later sessions tend to raid; e.g., London often sweeps the Asian range and NY often sweeps London's high or low.",
+    "inputs": [
+      "ohlc",
+      "time/session"
+    ],
+    "core_math": "Asian range: high/low of bars in 20:00-00:00 NY (ICT usage; some tools use 19:00-00:00 or 18:00-00:00). London: 02:00-05:00 NY. NY AM: 07:00/08:30-11:00. Track each session's H/L until taken by a later bar.",
+    "outputs": "Session boxes and extended H/L lines with swept state.",
+    "signal_type": "liquidity",
+    "timeframes": "1-15m",
+    "repaints": "no - each session's levels are final once the session ends (live session updates until then).",
+    "weaknesses": "Session boundaries vary by source and instrument; bodies vs wicks for Asian range varies.",
+    "related": [
+      "Asian range",
+      "London high low",
+      "session liquidity"
+    ]
+  },
+  {
+    "id": "ict-premium-discount",
+    "name": "Premium / Discount & Equilibrium (dealing range)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/premium-and-discount/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "Splits a meaningful swing range at 50%: above equilibrium is premium (sell zone), below is discount (buy zone). ICT only buys in discount and sells in premium of the relevant dealing range.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Dealing range from a significant swing low SL to swing high SH (the most recent leg that swept liquidity or broke structure). EQ = (SH+SL)/2; pos = (close-SL)/(SH-SL); discount if pos<0.5, premium if pos>0.5; quadrants at 0.25/0.75. Retire range on close beyond either extreme.",
+    "outputs": "Shaded premium/discount halves, EQ line, position %.",
+    "signal_type": "zone",
+    "timeframes": "Range on 4H-D, applied on LTF",
+    "repaints": "conditional - range endpoints depend on confirmed swings and redraw when broken.",
+    "weaknesses": "Midpoint depends entirely on which swings are chosen; minor swings give random EQs.",
+    "related": [
+      "equilibrium",
+      "EQ",
+      "dealing range",
+      "premium",
+      "discount",
+      "PD array matrix"
+    ]
+  },
+  {
+    "id": "ict-optimal-trade-entry",
+    "name": "Optimal Trade Entry (OTE; 62-79% Fibonacci zone)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/optimal-trade-entry/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A Fibonacci retracement entry zone between 62% and 79% of a displacement leg that broke structure, with 70.5% as the preferred level. Targets are projected with negative Fibonacci extensions of the same leg.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Bullish: leg from swing low A to swing high B after MSS/BOS. R = B-A. OTE zone = [B-0.79R, B-0.62R] (some use 0.618 / 0.786), sweet spot B-0.705R; stop below A (100%). Targets: -0.27 -> B+0.27R, -0.62 -> B+0.62R, -1.0 (symmetrical swing) -> B+R. Bearish mirror. Anchor on wicks by default (body anchoring is a variant).",
+    "outputs": "Fib levels/zone box; entry signal when price enters zone; extension targets.",
+    "signal_type": "zone",
+    "timeframes": "All; classic day-trade use 5-15m",
+    "repaints": "conditional - leg endpoint B changes until the swing is confirmed.",
+    "weaknesses": "Selecting the leg is subjective; 62/70.5/79 vs 61.8/78.6 rounding; statistical edge of fib levels unproven.",
+    "related": [
+      "OTE",
+      "70.5% level",
+      "fib retracement",
+      "symmetrical price swing",
+      "-0.27/-0.62 extensions"
+    ]
+  },
+  {
+    "id": "ict-standard-deviation-projections",
+    "name": "Standard Deviation Projections (range multiples; STDV)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/standard-deviation-projections/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "Projects multiples of a reference range's height (CBDR, Asian range, flout or a manipulation leg) to estimate where the session's or day's high/low may form. Despite the name, no statistical variance is computed.",
+    "inputs": [
+      "ohlc",
+      "time/session"
+    ],
+    "core_math": "R = H_ref - L_ref. Upper_k = H_ref + k*R, Lower_k = L_ref - k*R for k in {1,1.5,2,2.5,3,4}. For a directional manipulation leg: set 0 at leg origin, 1 at leg end, project -1,-2,-2.5,-4 in expansion direction. The -2 to -2.5 band is commonly cited for session extremes.",
+    "outputs": "Ladder of horizontal levels for the session.",
+    "signal_type": "level",
+    "timeframes": "Intraday (1-15m), anchored on session ranges",
+    "repaints": "no - fixed once the anchor range completes.",
+    "weaknesses": "Levels are candidate zones only; wide anchor ranges make projections meaningless; which anchor to use is discretionary.",
+    "related": [
+      "STDV",
+      "SD projections",
+      "range projections",
+      "fib extensions"
+    ]
+  },
+  {
+    "id": "ict-cbdr-asian-flout",
+    "name": "Central Bank Dealers Range (CBDR), Asian Range & Flout",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/ict-session-ranges/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "Early ICT forex ranges used to anchor the next day's projections: CBDR is the 14:00-20:00 NY consolidation, the Asian range 20:00-00:00, and the flout a wider fallback (roughly 15:00-00:00) when CBDR is too wide.",
+    "inputs": [
+      "ohlc",
+      "time/session"
+    ],
+    "core_math": "CBDR: H/L of candle BODIES (max/min of open,close) for bars in [14:00,20:00) NY; usable if height <= ~40 pips (FX majors). Asian: H/L in [20:00,00:00) NY (bodies or wicks - choose one). Flout: [15:00,00:00) (varies). Project k*R multiples per standard-deviation-projection node (1-4 SDs; London high/low of day often at 1-2 SD of CBDR per ICT lore).",
+    "outputs": "Range boxes + SD ladders for the next day.",
+    "signal_type": "session",
+    "timeframes": "15m-1H forex",
+    "repaints": "no - fixed when the window closes.",
+    "weaknesses": "Mainly an older forex concept; flout window and body/wick choice vary; reliability depends on tight ranges.",
+    "related": [
+      "CBDR",
+      "flout",
+      "Asian range",
+      "central bank dealers range"
+    ]
+  },
+  {
+    "id": "ict-killzones",
+    "name": "Killzones (Asia, London Open, NY AM/Open, London Close, NY PM)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/killzones/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "Fixed New York-time windows in which ICT expects the most meaningful liquidity runs and expansions. Setups are generally only taken inside a killzone.",
+    "inputs": [
+      "time/session"
+    ],
+    "core_math": "All America/New_York (DST-aware). Common: Asia 20:00-00:00 (variants 19:00-22:00, 20:00-22:00); London Open 02:00-05:00; NY AM 07:00-10:00 (index-futures variant 08:30-11:00; LuxAlgo ICT Concepts uses 07:00-09:00); London Close 10:00-12:00; NY PM 13:30-16:00. inKZ = time(timeframe.period, '0200-0500', 'America/New_York') etc.",
+    "outputs": "Background shading / boolean filter per session; session H/L.",
+    "signal_type": "session",
+    "timeframes": "Intraday (1-60m)",
+    "repaints": "no - purely clock-based.",
+    "weaknesses": "Boundaries differ across sources and course years (edges are soft). Relevance differs per instrument (e.g., crypto).",
+    "related": [
+      "kill zone",
+      "London open killzone",
+      "New York killzone",
+      "Asian killzone",
+      "London close killzone",
+      "NY PM session"
+    ]
+  },
+  {
+    "id": "ict-macros",
+    "name": "ICT Macros (algorithmic time windows)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/ict-macros/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "Short ~20-minute windows, canonically xx:50-xx:10 NY time, in which ICT expects price to run nearby liquidity or rebalance an FVG. Used as a timing filter for entries within killzones.",
+    "inputs": [
+      "time/session"
+    ],
+    "core_math": "NY time windows (LuxAlgo list): 02:33-03:00, 04:03-04:30, 08:50-09:10, 09:50-10:10, 10:50-11:10, 11:50-12:10, 13:10-13:40 (some lists 13:10-13:50), 15:15-15:45. inMacro = any(time in window).",
+    "outputs": "Shaded windows; optional high/low of each macro.",
+    "signal_type": "session",
+    "timeframes": "1-5m",
+    "repaints": "no - clock-based.",
+    "weaknesses": "Exact minutes vary between sources/years (treat as convention); no published statistical validation.",
+    "related": [
+      "macro times",
+      "algorithmic macros",
+      "9:50 macro"
+    ]
+  },
+  {
+    "id": "ict-midnight-open",
+    "name": "Midnight Open / True Day Open (and 8:30 / 9:30 opens; time anchors)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/ict-time-anchors/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "The 00:00 New York opening price is ICT's reference for the algorithmic day: on bullish days the low should form below it early (manipulation) and price should then trade above it (and vice-versa). The 08:30 and 09:30 opens are secondary intraday anchors.",
+    "inputs": [
+      "ohlc",
+      "time/session"
+    ],
+    "core_math": "MO = open of first bar at/after 00:00 America/New_York; extend through the day. Bullish context if close > MO after the London/NY manipulation window; bearish if below. Also track O_0830 and O_0930. For AMD/Judas logic: bullish-day expectation = low of day forms below MO, then close > MO.",
+    "outputs": "Horizontal open lines; premium/discount vs open.",
+    "signal_type": "level",
+    "timeframes": "1-15m intraday",
+    "repaints": "no - fixed at the anchor time.",
+    "weaknesses": "Term 'true day open' is contested: ICT uses midnight open; quarterly-theory sources (Daye) define True Open per 6-hour quarter and the weekly True Open differently. Uncertain which the user means - store both.",
+    "related": [
+      "NY midnight open",
+      "true day open",
+      "TDO",
+      "8:30 open",
+      "9:30 open",
+      "time anchors",
+      "weekly open"
+    ]
+  },
+  {
+    "id": "ict-silver-bullet",
+    "name": "ICT Silver Bullet",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/silver-bullet/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A one-hour time-based model: inside a fixed window, wait for a liquidity sweep/structure shift, then enter on a fair value gap created by displacement inside the window, targeting the opposing liquidity pool.",
+    "inputs": [
+      "ohlc",
+      "time/session"
+    ],
+    "core_math": "Windows NY: 03:00-04:00, 10:00-11:00, 14:00-15:00. Pre-window: mark liquidity pools (PDH/PDL, session H/L, swings) on 15m. In window: require sweep of a pool or MSS, then FVG formed inside window in the new direction (from displacement). Entry limit at FVG (edge or CE); stop beyond the manipulation swing (tight variant: beyond FVG far edge); target = opposing pool. Optional min framework (LuxAlgo indicator: 40 ticks futures / 15 pips FX). No FVG in window = no trade; one attempt per window.",
+    "outputs": "Window shading, qualifying FVG box, entry/stop/target, alerts.",
+    "signal_type": "composite",
+    "timeframes": "Execution 1-5m, context 15m",
+    "repaints": "conditional - swing/MSS confirmation lag; FVG final on close.",
+    "weaknesses": "Minimum distance rules differ (handles/pips/ticks, often unsourced); no audited statistics; win-rate claims (55-65%) are marketing.",
+    "related": [
+      "silver bullet",
+      "SB",
+      "10 am silver bullet"
+    ]
+  },
+  {
+    "id": "ict-judas-swing",
+    "name": "Judas Swing (false open move)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/judas-swing/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "An early-session false move that runs stops on one side (often through the midnight open or Asian range) before the day's real move develops the opposite way. It is confirmed only by the failure and subsequent displacement back through the level.",
+    "inputs": [
+      "ohlc",
+      "time/session"
+    ],
+    "core_math": "References: midnight open MO, Asian H/L, PDH/PDL. In window 00:00-05:00 NY (London) or ~08:30-10:00 (NY): bullish Judas = price trades below MO and sweeps a SSL reference (low < AsianLow or PDL), then displaces back up (close > MO, or MSS/CISD with FVG). Bearish mirror above MO. If price holds beyond the swept level and builds, classify as trend open, not Judas.",
+    "outputs": "Marker at Judas extreme; flag enabling bias for the rest of the session.",
+    "signal_type": "reversal",
+    "timeframes": "1-15m",
+    "repaints": "conditional - only confirmed after the reversal; extreme identified in hindsight.",
+    "weaknesses": "Cannot be known in real time (indistinguishable from breakout); window boundaries vary (some use 00:00-02:00 or 0-5 AM).",
+    "related": [
+      "Judas",
+      "false move",
+      "fake-out open"
+    ]
+  },
+  {
+    "id": "ict-power-of-three",
+    "name": "Power of Three / AMD (Accumulation-Manipulation-Distribution; PO3)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/accumulation-manipulation-distribution/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "Describes a period's candle as three phases relative to its open: consolidation near the open, a manipulation run beyond one side that takes liquidity, then distribution (expansion) the other way into the close. A bullish daily PO3 opens near its low, wicks below the open, and closes near the high.",
+    "inputs": [
+      "ohlc",
+      "time/session",
+      "higher-timeframe"
+    ],
+    "core_math": "Anchor O = period open (midnight NY for day; Sunday/Monday open for week; session opens intraday). Accumulation: range around O (e.g., Asia). Manipulation: excursion beyond one side sweeping liquidity (bullish day: low << O). Distribution: displacement back through O and expansion that holds to close. Bullish PO3 day candle: (O-low) > 0 is the manipulation wick, close near high. Session mapping variant: Asia=A, London=M, NY=D.",
+    "outputs": "Phase labels/state machine; HTF candle projection on LTF.",
+    "signal_type": "composite",
+    "timeframes": "D/W candles analysed on 15m-1H; also intraday session fractal",
+    "repaints": "conditional - phases only classifiable after distribution confirms.",
+    "weaknesses": "Post-hoc: manipulation is indistinguishable from breakout until distribution; phase boundaries arbitrary.",
+    "related": [
+      "PO3",
+      "AMD",
+      "accumulation manipulation distribution",
+      "power of 3"
+    ]
+  },
+  {
+    "id": "ict-daily-bias",
+    "name": "Daily Bias (with next-day close rules)",
+    "source": "ICT",
+    "url": "https://ttrades.com/ict-daily-bias-most-simple-mechanical-framework/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "The pre-session directional read that determines which liquidity (previous day high or low) is expected to be run. A simple mechanical version uses the daily close relative to the previous day's range.",
+    "inputs": [
+      "ohlc",
+      "higher-timeframe"
+    ],
+    "core_math": "On completed daily candle d relative to d-1: close > PDH -> bullish bias (target next day's high / next BSL). close < PDL -> bearish. high > PDH but close <= PDH (swept and closed back inside) -> bearish reversal. low < PDL but close >= PDL -> bullish reversal. Inside bar / no clear case -> neutral or keep prior bias. Refined with HTF draw on liquidity and premium/discount.",
+    "outputs": "Bias state (+1/0/-1) per day; target levels.",
+    "signal_type": "trend",
+    "timeframes": "D (and W analog) feeding intraday",
+    "repaints": "no - uses completed daily candle (must avoid lookahead).",
+    "weaknesses": "ICT's own daily bias is discretionary (order flow, DOL, PD arrays); the mechanical close rules come from TTrades-style simplifications. Many days are not textbook.",
+    "related": [
+      "bias",
+      "HTF bias",
+      "order flow",
+      "draw on liquidity"
+    ]
+  },
+  {
+    "id": "ict-smt-divergence",
+    "name": "SMT Divergence (Smart Money Technique / Tool; crack in correlation)",
+    "source": "ICT",
+    "url": "https://www.tradingview.com/script/uuNkTbiP-FibAlgo-ICT-SMT-Divergence/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "Disagreement between two correlated instruments at a liquidity level: one makes a new high (or low) while the other fails to. The failing instrument is read as showing true strength/weakness, signalling reversal.",
+    "inputs": [
+      "ohlc",
+      "second-symbol"
+    ],
+    "core_math": "Pivots on both symbols (e.g., ta.pivothigh(len,len), default 5 in FibAlgo) aligned in time (nearest pivot within tolerance, e.g., 10 bars). Bearish SMT: A: pivotHigh_now > pivotHigh_prev (HH) AND B: pivotHigh_now < pivotHigh_prev (LH). Bullish: A LL while B HL. Inverse pairs (DXY vs EURUSD): compare A's high with B's low (invert B). Simpler intraday variant: A sweeps a reference level (e.g., PDH/session high) while B does not.",
+    "outputs": "Lines joining the diverging swings on both charts; signal labels.",
+    "signal_type": "divergence",
+    "timeframes": "1-15m intraday, also HTF",
+    "repaints": "conditional - pivot confirmation lag of len bars; request.security of second symbol must avoid lookahead.",
+    "weaknesses": "Which swings to compare and time alignment are subjective; correlation can break for fundamental reasons; data-feed timing differences between symbols.",
+    "related": [
+      "SMT",
+      "smart money technique",
+      "ES/NQ divergence",
+      "DXY SMT"
+    ]
+  },
+  {
+    "id": "ict-ipda-data-ranges",
+    "name": "IPDA Data Ranges (20/40/60-day look-back; quarterly shifts)",
+    "source": "ICT",
+    "url": "https://www.tradingview.com/script/rTJEJb5v-ICT-IPDA-Look-Back/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "ICT claims the Interbank Price Delivery Algorithm references the last 20, 40 and 60 trading days for liquidity and imbalances. The high/low and equilibrium of each look-back define short/intermediate/long-term draws and premium/discount.",
+    "inputs": [
+      "ohlc",
+      "higher-timeframe"
+    ],
+    "core_math": "On daily data: for n in {20,40,60}: H_n = highest(high, n) and L_n = lowest(low, n) over the last n completed days (inclusive of the n-th bar - toodegrees bug-fix note), EQ_n = (H_n+L_n)/2, pos = (close-L_n)/(H_n-L_n). Look-forward (ICT: next 20/40/60 days may reach levels within those ranges; quarterly shift every ~3-4 months) - no precise formula.",
+    "outputs": "Boxes for 20/40/60-day ranges with EQ; premium/discount readout.",
+    "signal_type": "regime",
+    "timeframes": "Daily, projected onto intraday",
+    "repaints": "no - rolling window of completed days.",
+    "weaknesses": "IPDA as an actual algorithm is ICT's unverified claim; 'quarterly shift' timing is vague; ranges are just Donchian channels.",
+    "related": [
+      "IPDA",
+      "interbank price delivery algorithm",
+      "look back",
+      "look forward",
+      "quarterly shift",
+      "Donchian 20/40/60"
+    ]
+  },
+  {
+    "id": "ict-2022-mentorship-model",
+    "name": "ICT 2022 Mentorship Model (2022 model)",
+    "source": "ICT",
+    "url": "https://innercircletrader.net/tutorials/complete-ict-trading-strategy-2022/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "ICT's free 2022 YouTube mentorship intraday model: with a higher-timeframe bias, wait in a killzone for a sweep of liquidity against the bias, then a market structure shift with displacement, then enter on a retrace into the FVG (or other PD array) formed by the displacement, targeting the opposite liquidity.",
+    "inputs": [
+      "ohlc",
+      "time/session",
+      "higher-timeframe"
+    ],
+    "core_math": "1) Bias from D/4H (DOL). 2) Mark liquidity: PDH/PDL, session H/L, PWH/PWL, 15m swings, NWOG/NDOG. 3) In killzone (London 02:00-05:00 or NY AM 07:00-10:00/08:30-11:00): sweep of pool against bias (low < SSL level for longs). 4) MSS: close > last STH with displacement. 5) FVG from displacement (min tick size) in discount of the new leg (below EQ of sweep-low to MSS-high). 6) Entry limit at FVG (edge/CE); stop below sweep low; target opposite pool or >= 1:3 RR. Invalidate if a body closes through FVG far side or untested after N bars.",
+    "outputs": "State machine: sweep -> MSS -> FVG -> entry; entry/stop/target lines; alerts.",
+    "signal_type": "composite",
+    "timeframes": "Bias 1H-D; setup 15m; execution 1-5m",
+    "repaints": "conditional - swing/MSS confirmation lag; entries themselves non-repainting on close.",
+    "weaknesses": "Many steps discretionary (bias, DOL, displacement); TradingView implementations differ; no audited stats.",
+    "related": [
+      "2022 model",
+      "ICT mentorship model",
+      "sweep-MSS-FVG model"
+    ]
+  },
+  {
+    "id": "ict-turtle-soup",
+    "name": "Turtle Soup (ICT liquidity-sweep reversal; Raschke/Connors origin)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/turtle-soup/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A fade of a failed breakout. The original Connors/Raschke (1995) rule fades new 20-day extremes; ICT re-labelled it as a raid on an obvious high/low followed by a reversal, usually confirmed by a structure shift.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Original buy: today makes new 20-day low; the previous 20-day low is >= 4 sessions old; buy stop at the prior 20-day low (entry only if price reclaims it); stop below today's low. Sell mirror. 'Plus One' variant: reclaim may occur next session. ICT version: price trades beyond a key level (PDH/PDL, EQH/EQL, swing) and closes back inside (sweep), optionally followed by MSS/CISD; enter toward opposite liquidity, stop beyond sweep extreme.",
+    "outputs": "Signals at reclaimed level; stop/target lines.",
+    "signal_type": "reversal",
+    "timeframes": "Original: daily; ICT: all timeframes",
+    "repaints": "no - original rules are close/stop based; ICT version conditional on structure confirmation.",
+    "weaknesses": "ICT version is essentially the liquidity sweep node with discretionary confirmation; original rules are mechanical and testable.",
+    "related": [
+      "turtle soup",
+      "turtle soup plus one",
+      "failed breakout fade"
+    ]
+  },
+  {
+    "id": "ict-unicorn-model",
+    "name": "Unicorn Model (breaker + FVG overlap)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/unicorn/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A reversal setup where a breaker block and a fair value gap from the same displacement overlap in price; the overlap becomes a tight entry zone on the retrace.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Bullish: sweep of prior low -> displacement up closing above prior swing high (creates bullish breaker per breaker node) AND a bullish FVG in that displacement. Unicorn zone = intersection [max(brk_bot,fvg_bot), min(brk_top,fvg_top)], valid only if non-empty. Entry on retrace into zone; stop below breaker/sweep low; target opposing liquidity. Bearish mirror.",
+    "outputs": "Overlap box, entry/stop/target, alerts.",
+    "signal_type": "composite",
+    "timeframes": "Execution 1-15m within killzones; fractal",
+    "repaints": "conditional - breaker known only after structure break.",
+    "weaknesses": "Inherits breaker definitional ambiguity (which candles form the breaker); overlap often thin or absent.",
+    "related": [
+      "unicorn",
+      "breaker FVG confluence"
+    ]
+  },
+  {
+    "id": "ict-market-maker-models",
+    "name": "Market Maker Buy/Sell Models (MMBM / MMSM; MMXM)",
+    "source": "ICT",
+    "url": "https://www.luxalgo.com/library/concept/market-maker-models/",
+    "access": "concept",
+    "license": "n/a",
+    "what_it_does": "A full delivery arc: price leaves an original consolidation, steps toward a liquidity objective through smaller consolidations, sweeps it and reverses (smart money reversal), then retraces the whole path, with the earlier consolidations as targets.",
+    "inputs": [
+      "ohlc",
+      "higher-timeframe"
+    ],
+    "core_math": "MMBM (mirror for MMSM): 1) Original consolidation = range with displacement exit down. 2) Sell-side curve: series of lower consolidations (typically 2-3). 3) Objective reached: sweep of SSL at HTF PD array, then displacement up (MSS/CISD, often SMT). 4) Buy-side curve: targets = each prior consolidation, final target original consolidation high. Codeable only as a heuristic state machine; phase detection needs consolidation detection (e.g., low ATR/range contraction).",
+    "outputs": "Phase labels, projected consolidation targets.",
+    "signal_type": "composite",
+    "timeframes": "Any; commonly 15m-4H",
+    "repaints": "conditional - phases recognised only after the reversal; mostly hindsight.",
+    "weaknesses": "Highly discretionary; details differ between educators; difficult to code faithfully.",
+    "related": [
+      "MMXM",
+      "MMBM",
+      "MMSM",
+      "original consolidation",
+      "smart money reversal"
+    ]
+  }
+]

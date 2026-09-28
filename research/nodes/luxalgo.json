@@ -1,0 +1,1356 @@
+[
+  {
+    "id": "lux-smart-money-concepts",
+    "name": "Smart Money Concepts (SMC) [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/CnB3fSph-Smart-Money-Concepts-SMC-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "All-in-one SMC markup: automates internal and swing market structure (BOS/CHoCH), order blocks, equal highs/lows, fair value gaps, multi-timeframe previous highs/lows and premium/discount zones. The most boosted indicator on TradingView (LuxAlgo cites ~165k boosts).",
+    "inputs": [
+      "ohlc",
+      "higher-timeframe"
+    ],
+    "core_math": "Two pivot layers: a short-lookback 'internal' swing detector and a long-lookback 'swing' detector. A close/cross beyond the last swing high/low is labelled BOS if it agrees with the current structure trend, CHoCH if it flips it. Order blocks are taken at the candle preceding the structure break around the swing (exact candle-selection/volatility filter not described on the page); OBs are removed once price trades through them (mitigated). FVGs use the 3-bar gap definition with an optional 'Auto Threshold' filter; EQH/EQL are swing points at near-equal prices confirmed after N 'Bars Confirmation'. Premium/discount = zones of the current swing range (top = premium, bottom = discount, middle = equilibrium). Exact pivot lengths and thresholds not stated on the public page.",
+    "outputs": "BOS/CHoCH labels and lines (internal + swing), OB boxes (default last 5), EQH/EQL labels, FVG boxes, daily/weekly/monthly high/low levels, premium/equilibrium/discount zones, candle coloring by trend, alerts. Newer library version adds a 'Confluence Score' (weighted trend bias, HTF alignment, zone proximity, sweeps).",
+    "signal_type": "structure",
+    "timeframes": "any; historical vs present-only display modes",
+    "repaints": "conditional - pivots/swings are only confirmed after the right-side lookback bars, so structure labels are placed retroactively; break events themselves fire in real time",
+    "weaknesses": "Author states there is no supporting data for the validity of SMC concepts; swing-level labels lag by the pivot length; many objects clutter chart; OB definition is a heuristic.",
+    "related": [
+      "Smart Money Concepts (Advanced)",
+      "Order Block Detector [LuxAlgo]",
+      "Market Structure & Scatter Dashboard",
+      "Structure & Trend Dashboard"
+    ]
+  },
+  {
+    "id": "lux-ict-concepts",
+    "name": "ICT Concepts [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/ib4uqBJx-ICT-Concepts-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Toolkit bundling Inner Circle Trader concepts: market structure (MSS/BOS), order and breaker blocks, imbalances (FVG, IFVG, BPR, volume imbalance, opening gap), buyside/sellside liquidity, displacement, killzones, NWOG/NDOG and Fibonacci between features.",
+    "inputs": [
+      "ohlc",
+      "time/session"
+    ],
+    "core_math": "MSS = break of a swing low in an uptrend (or swing high in a downtrend); BOS = break in trend direction; swing length set by 'Length'. Displacement = run of same-direction candles with large bodies and short shadows. OBs from swing lookback, converted to breakers when mitigated. FVG = 3-candle pattern whose outer shadows do not overlap; IFVG variant built from averages of shadow and body extremities when shadows overlap; BPR = overlap of opposing FVGs; VI = open/close gaps with trading overlap; OG = true gap with no overlap. Liquidity: pivots are grouped when within a margin of (10-bar ATR / (10/margin)). Killzones are fixed ET windows (NY 7-9, London open 2-5, London close 10-12, Asia from 20:00).",
+    "outputs": "MSS/BOS lines, OB/breaker boxes, imbalance boxes, liquidity boxes (max 50/side), displacement highlights, killzone background, NWOG/NDOG boxes, Fibonacci levels.",
+    "signal_type": "composite",
+    "timeframes": "intraday for killzones; structure any TF",
+    "repaints": "conditional - pivots/swings are only confirmed after the right-side lookback bars, so structure labels are placed retroactively; break events themselves fire in real time",
+    "weaknesses": "Many overlapping heuristics; present mode limited to last 500 bars; displacement and liquidity definitions are discretionary-inspired.",
+    "related": [
+      "ICT Implied Fair Value Gap (IFVG) [LuxAlgo]",
+      "Pure Price Action ICT Tools"
+    ]
+  },
+  {
+    "id": "lux-market-structure-fractal",
+    "name": "Market Structure CHoCH/BOS (Fractal) [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/ZpHqSrBK-Market-Structure-CHoCH-BOS-Fractal-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Experimental market-structure tool that builds CHoCH/BOS from fractal patterns instead of classic swing points. Optionally draws the resulting support/resistance with breakouts and a dashboard with structure-to-fractal percentages.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Bullish fractal: lows decreasing into a central candle then increasing after it; bearish fractal: highs increasing into the centre then decreasing. The latest fractal high/low becomes the structure level; a break against the current trend is CHoCH, a break with it is BOS.",
+    "outputs": "CHoCH/BOS labels and lines, optional S/R levels with break markers, dashboard of structure/fractal ratio.",
+    "signal_type": "structure",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - pivots/swings are only confirmed after the right-side lookback bars, so structure labels are placed retroactively; break events themselves fire in real time",
+    "weaknesses": "Fractal requires right-side bars (lag); experimental per author.",
+    "related": []
+  },
+  {
+    "id": "lux-pure-price-action-structures",
+    "name": "Pure Price Action Structures [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/EuXueiJN-Pure-Price-Action-Structures-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Parameter-free market structure: detects short-, intermediate- and long-term swing highs/lows purely from price, then labels MSS/CHoCH and BOS for each tier.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Short-term swing high = a high with lower highs on both sides (swing low analogous); intermediate swings are derived from the short-term swing sequence and long-term from the intermediate sequence (hierarchical swing-of-swings; exact rule not spelled out). Breaks of each tier's last swing are classified as shift (against trend) or break (with trend).",
+    "outputs": "Tiered swing labels (ST/IT/LT), MSS/BOS lines per tier.",
+    "signal_type": "structure",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - author: swing points are not identified in real time; short-term up to 1 bar delay, intermediate/long-term depend on later price action",
+    "weaknesses": "Higher tiers can be confirmed many bars late; no tuning knobs.",
+    "related": [
+      "Pure Price Action ICT Tools"
+    ]
+  },
+  {
+    "id": "lux-market-structure-oscillator",
+    "name": "Market Structure Oscillator [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/K47z5Kmf-Market-Structure-Oscillator-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Turns short-, intermediate- and long-term market-structure events into oscillators, plus a cycle histogram, to show structural trend momentum.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Uses the same hierarchical swing detection as Pure Price Action Structures (ST swing = peak with lower highs each side; IT from ST swings, LT from IT swings). MSS/BOS events per tier are normalized and combined with user weights into one oscillator, then smoothed; a cycle oscillator histogram is derived from the oscillator relative to its average ('Cycle Signal Length').",
+    "outputs": "Three per-tier oscillators, combined oscillator, cycle histogram, structure drawn on price.",
+    "signal_type": "structure",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - pivots/swings are only confirmed after the right-side lookback bars, so structure labels are placed retroactively; break events themselves fire in real time",
+    "weaknesses": "Exact normalization not described; inherits swing confirmation lag.",
+    "related": []
+  },
+  {
+    "id": "lux-market-structure-trailing-stop",
+    "name": "Market Structure Trailing Stop [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/c4Z9xThG-Market-Structure-Trailing-Stop-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Trailing stop that resets on market-structure events (CHoCH only, or CHoCH + BOS) and then ratchets toward price.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Pivot swings (Pivot Lookback) define structure. On a new structure event the stop is initialised at the extreme (max/min) of the previous trend leg and a trailing max/min is reset to current price; thereafter the stop converges toward price by an 'Increment Factor %' of the distance between the trailing extreme and the stop.",
+    "outputs": "Trailing stop line colored by direction, optional CHoCH/BOS labels.",
+    "signal_type": "trend",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - pivots/swings are only confirmed after the right-side lookback bars, so structure labels are placed retroactively; break events themselves fire in real time",
+    "weaknesses": "Resets depend on lagged pivots; convergence speed is a free parameter.",
+    "related": []
+  },
+  {
+    "id": "lux-knn-market-architecture",
+    "name": "kNN Market Architecture [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/20YQRCyP-kNN-Market-Architecture-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Market-structure framework that uses a k-nearest-neighbours classifier to validate candidate pivots at short, medium and long horizons, with volatility-adaptive detection windows, delta labels and an anchored volume profile.",
+    "inputs": [
+      "ohlc",
+      "volume"
+    ],
+    "core_math": "For each candidate pivot, features (relative ATR, relative volume) are compared with a stored database of previous pivots; the pivot is accepted only if its k nearest neighbours pass a confidence threshold. The pivot detection window expands in high volatility and contracts in low volatility. Candle bias = above recent validated highs (bull) / below lows (bear).",
+    "outputs": "Validated ST/MT/LT pivots, 'Delta Tank' cumulative volume delta labels, bias candle colors, anchored volume profile of current range.",
+    "signal_type": "structure",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - pivots/swings are only confirmed after the right-side lookback bars, so structure labels are placed retroactively; break events themselves fire in real time",
+    "weaknesses": "Label definition for kNN training not described publicly; small feature set.",
+    "related": []
+  },
+  {
+    "id": "lux-order-blocks-breaker-blocks",
+    "name": "Order Blocks & Breaker Blocks [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/piIbWMpY-Order-Blocks-Breaker-Blocks-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Detects order blocks from swing points and converts them into breaker blocks once mitigated (polarity flip: support becomes resistance and vice versa).",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Swings via 'Swing Lookback'; when price breaks a swing, the OB is the relevant candle range (full range or body if 'Use Candle Body') near the swing extreme. When price later mitigates the OB it becomes a breaker block, expected to be retested from the other side.",
+    "outputs": "Solid OB boxes, dashed dual-color breaker boxes, optional historical polarity change labels.",
+    "signal_type": "zone",
+    "timeframes": "unknown; higher lookback = longer-term blocks",
+    "repaints": "conditional - OBs/breakers are real-time given swing confirmation; historical polarity labels are backpainted (author)",
+    "weaknesses": "Exact OB candle selection not detailed on page; zone quality heuristic.",
+    "related": [
+      "ICT Concepts order blocks",
+      "Order Block Detector [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-fair-value-gap",
+    "name": "Fair Value Gap [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/jWY4Uiez-Fair-Value-Gap-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Detects bullish/bearish fair value gaps, tracks their mitigation and reports the percentage of gaps filled and average bars to fill.",
+    "inputs": [
+      "ohlc",
+      "higher-timeframe"
+    ],
+    "core_math": "Bullish FVG: low > high[2] AND close[1] > high[2] AND (low - high[2])/high[2] > threshold. Bearish: high < low[2] AND close[1] < low[2] AND (low[2]-high)/high < -threshold. Auto threshold = cumulative mean of relative FVG heights. Gap is mitigated when price trades back through its far extremity.",
+    "outputs": "FVG boxes, unmitigated/mitigated levels, dashboard (fill %, average fill duration), fill alerts.",
+    "signal_type": "zone",
+    "timeframes": "any; custom timeframe input",
+    "repaints": "no - pattern confirmed on bar close using only past bars (HTF option may lag until HTF bar closes)",
+    "weaknesses": "Author frames it both as contrarian (fill = reversal) and trend (new FVG = entry) - no single tested rule.",
+    "related": [
+      "HTF Fair Value Gap [LuxAlgo]",
+      "FVG Sessions [LuxAlgo]",
+      "Breakaway Fair Value Gaps [LuxAlgo]",
+      "Fair Value Gaps Mitigation Oscillator [LuxAlgo]",
+      "Fair Value Gap Absorption Indicator [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-inversion-fvg",
+    "name": "Inversion Fair Value Gaps (IFVG) [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/8FHucjY6-Inversion-Fair-Value-Gaps-IFVG-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Tracks FVGs that are closed through in the opposite direction (inverted), which then act as zones of the opposite polarity, with signals on retests.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "FVGs larger than ATR * 'ATR Multiplier' are tracked; when price closes beyond the FVG against its bias it becomes an IFVG (bullish FVG -> resistance, bearish -> support). Signals fire on interaction using wick or close ('Signal Preference'); the IFVG is deleted once price mitigates it.",
+    "outputs": "IFVG boxes, midlines, signal markers (last up to 100).",
+    "signal_type": "zone",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - author: historical signals are not valid for backtesting because deleted (mitigated) IFVGs vanish from history",
+    "weaknesses": "Deletion of mitigated zones biases visual history.",
+    "related": [
+      "ICT Implied Fair Value Gap (IFVG) [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-imbalance-detector",
+    "name": "Imbalance Detector [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/C0cC294Q-Imbalance-Detector-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Detects three imbalance types - fair value gaps, opening gaps and volume imbalances - with a dashboard of frequency and fill percentage.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "FVG: gap between current low and high two bars back (bull) or current high and low two bars back (bear). Opening gap: current bar's range does not overlap prior bar. Volume imbalance: gap between consecutive candle bodies while wicks overlap. Fill tracked when price returns into the gap.",
+    "outputs": "Imbalance boxes per type, dashboard (count, fill %), alerts.",
+    "signal_type": "zone",
+    "timeframes": "unknown (any)",
+    "repaints": "no - three-bar/two-bar patterns confirmed on close",
+    "weaknesses": "Descriptive statistics only; no directional edge claimed.",
+    "related": []
+  },
+  {
+    "id": "lux-liquidity-voids-fvg",
+    "name": "Liquidity Voids (FVG) [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/rRKtzvFt-Liquidity-Voids-FVG-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Highlights liquidity voids (long-range thin-trading moves derived from FVG logic) and their distribution across price, showing fill status.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Voids derived from fair-value-gap detection; optional filter compares void width with a fixed-length ATR times 'Liquidity Voids Threshold' (0 = no filter). A void is filled when price returns to the gap origin.",
+    "outputs": "Void boxes/bars across price levels, labels, filled voids toggle.",
+    "signal_type": "zone",
+    "timeframes": "unknown (any)",
+    "repaints": "no - based on closed-bar gaps (not stated explicitly by author)",
+    "weaknesses": "Assumes voids 'almost always fill' - no statistics given.",
+    "related": [
+      "Liquidity Levels/Voids (VP) [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-buyside-sellside-liquidity",
+    "name": "Buyside & Sellside Liquidity [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/Qk4vBbfL-Buyside-Sellside-Liquidity-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Marks ICT buyside (above highs, shorts' stops) and sellside (below lows, longs' stops) liquidity levels, creates zones when they are swept, and flags liquidity voids.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Pivot highs/lows over 'Detection Length' that cluster within a margin (ICT Concepts version: 10-bar ATR/(10/margin)) form a liquidity level. When price trades through the level a zone is created; a reversal toward the opposite pool is expected, while breaking the zone implies continuation. Voids = one or more same-direction candles with large bodies and short wicks.",
+    "outputs": "Liquidity level lines, breach zones, liquidity void boxes/labels.",
+    "signal_type": "liquidity",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - pivots/swings are only confirmed after the right-side lookback bars, so structure labels are placed retroactively; break events themselves fire in real time",
+    "weaknesses": "Margin/clustering exact formula not shown on this page; conflicting interpretations (reversal vs continuation) left to user.",
+    "related": [
+      "Liquidity Structure & Order Flow [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-liquidity-swings",
+    "name": "Liquidity Swings [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/1S2VOnJP-Liquidity-Swings-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Highlights swing-high/low areas where trading activity accumulated: counts how often price revisited each swing zone and sums the volume traded inside it.",
+    "inputs": [
+      "ohlc",
+      "volume"
+    ],
+    "core_math": "Pivot highs/lows (Pivot Lookback). Swing zone = wick extremity (high to max(open,close) for highs) or full candle range. While the zone is unbroken, each bar trading into it increments a touch count and adds its volume (optional intrabar precision). Zones below a count or volume threshold are filtered. Breaking a swing high = bullish, swing low = bearish.",
+    "outputs": "Swing zones with count, volume labels, swing lines.",
+    "signal_type": "liquidity",
+    "timeframes": "any; author notes lower-TF accumulation/distribution use",
+    "repaints": "conditional - author: not real-time by nature; pivots appear after the lookback",
+    "weaknesses": "Descriptive only; pivot labels not meant to be traded in real time.",
+    "related": []
+  },
+  {
+    "id": "lux-swing-failure-pattern",
+    "name": "Swing Failure Pattern (SFP) [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/YmWELClV-Swing-Failure-Pattern-SFP-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Detects swing failure patterns - wicks that pierce a recent swing level but close back inside - as liquidity-grab reversal setups, with a confirmation level.",
+    "inputs": [
+      "ohlc",
+      "volume"
+    ],
+    "core_math": "Swing highs/lows from pivots. Bearish SFP: high > swing high but close < swing high (bullish mirror). Optional volume % threshold filter (share of volume beyond the swing, per settings). Confirmation level = lowest low (bearish) / highest high (bullish) between the swing and the SFP; a break of it confirms reversal.",
+    "outputs": "SFP labels, accentuated wick lines, confirmation level line.",
+    "signal_type": "liquidity",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - pivots/swings are only confirmed after the right-side lookback bars, so structure labels are placed retroactively; break events themselves fire in real time",
+    "weaknesses": "Volume filter details depend on intrabar data availability; SFPs frequent in trends.",
+    "related": [
+      "Session Sweeps [LuxAlgo]",
+      "MSS Sweeps",
+      "Asia Sweep Reversals"
+    ]
+  },
+  {
+    "id": "lux-sr-levels-with-breaks",
+    "name": "Support and Resistance Levels with Breaks [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/JDFoWQbL-Support-and-Resistance-Levels-with-Breaks-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Plots pivot-based support/resistance and labels breaks, keeping only breaks confirmed by a volume oscillator above a threshold; also flags wick-dominated breaks.",
+    "inputs": [
+      "ohlc",
+      "volume"
+    ],
+    "core_math": "Pivot high/low with Left Bars/Right Bars defines the level. Break = close beyond the level; 'B' label only if the Volume Oscillator (short vs long EMA of volume, % difference) exceeds 'Volume Threshold'. Breaks on candles with a large opposing wick get 'Bull Wick'/'Bear Wick' tags.",
+    "outputs": "S/R step lines, B / Bull Wick / Bear Wick labels, alerts.",
+    "signal_type": "level",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - pivots/swings are only confirmed after the right-side lookback bars, so structure labels are placed retroactively; break events themselves fire in real time",
+    "weaknesses": "Volume oscillator EMA lengths are not stated on the page; single last pivot only.",
+    "related": []
+  },
+  {
+    "id": "lux-pivot-points-missed-reversals",
+    "name": "Pivot Points High Low & Missed Reversal Levels [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/OxJJqZiN-Pivot-Points-High-Low-Missed-Reversal-Levels-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Standard window pivots plus 'missed reversals': when two same-type pivots occur consecutively, the skipped opposite extreme is inserted and turned into a level; a zig-zag links them.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Pivot high/low = bar that is highest/lowest within the Pivot Length window. If two consecutive pivots are of the same type, the extreme of the opposite type between them is flagged as a missed reversal and plotted as a level. Zig-zag connects regular pivots and missed reversals.",
+    "outputs": "Pivot labels, ghost-labelled missed reversals, S/R levels, zig-zag.",
+    "signal_type": "level",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - pivots/swings are only confirmed after the right-side lookback bars, so structure labels are placed retroactively; break events themselves fire in real time",
+    "weaknesses": "Missed reversals are by definition found late.",
+    "related": []
+  },
+  {
+    "id": "lux-predictive-ranges",
+    "name": "Predictive Ranges [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/lIdNGLiV-Predictive-Ranges-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Projects a future trading range (central level plus upper/lower levels) that is reset in real time whenever price exits it; the central level's slope indicates trend. Former 2020 premium feature released open-source.",
+    "inputs": [
+      "ohlc",
+      "higher-timeframe"
+    ],
+    "core_math": "Range width driven by ATR(Length) * Factor. A central estimate of price is held constant while price stays within its ATR band and is shifted toward price when price moves beyond it; two levels above and below the centre are derived from the same ATR distance (exact number/spacing of levels not stated on page).",
+    "outputs": "Centre line and upper/lower range levels (R1/R2, S1/S2 style), trend via centre slope.",
+    "signal_type": "level",
+    "timeframes": "any; timeframe input",
+    "repaints": "no - author: new levels are given in real time when price exits the range and do not repaint",
+    "weaknesses": "Constant ranges in strong trends reset frequently.",
+    "related": [
+      "Signals & Overlays Predictive Ranges overlay"
+    ]
+  },
+  {
+    "id": "lux-range-detector",
+    "name": "Range Detector [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/QOuZIuvH-Range-Detector-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Detects consolidation ranges and highlights their extremities, coloring breakouts.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Over a window of 'Minimum Range Length' bars, a range is detected when every price lies within mean(window) +/- ATR(ATR Length) * Range Width. The range box then extends until a new range is detected; extremity color turns green/red when broken up/down.",
+    "outputs": "Range boxes, midline, detection-bar background, breakout coloring.",
+    "signal_type": "regime",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - ranges are drawn retrospectively (start point offset into the past) though detection moment is real-time",
+    "weaknesses": "Fixed ATR band; ranges can overlap trends in low volatility.",
+    "related": []
+  },
+  {
+    "id": "lux-supply-demand-visible-range",
+    "name": "Supply and Demand Visible Range [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/UpWXXsbC-Supply-and-Demand-Visible-Range-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Builds supply (top) and demand (bottom) areas for the currently visible chart range using a volume-accumulation method with intrabar data.",
+    "inputs": [
+      "ohlc",
+      "volume",
+      "intrabar"
+    ],
+    "core_math": "The visible range is split into 'Resolution' bins; starting from the top (supply) and bottom (demand) extremes, bins are accumulated until their volume reaches 'Threshold %' of total visible volume, defining each area. Plots the area average and volume-weighted average, and the midpoint between them.",
+    "outputs": "Supply/demand boxes, average and weighted-average lines, equilibrium line.",
+    "signal_type": "zone",
+    "timeframes": "any (visible range)",
+    "repaints": "yes - recalculates whenever the visible range changes; author calls it descriptive",
+    "weaknesses": "Not usable for backtesting or live signals.",
+    "related": [
+      "Supply and Demand Daily [LuxAlgo]",
+      "Supply Demand Profiles [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-trendlines-with-breaks",
+    "name": "Trendlines with Breaks [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/IYL88A1N-Trendlines-with-Breaks-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Draws pivot-anchored trendlines whose slope is set by a volatility measure, and marks real-time breakouts.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "From each new pivot high (low), a descending (ascending) line is projected with slope proportional to a volatility measure scaled by the Slope multiplier (volatility/Length * Slope per the open source, not stated on page), where the volatility measure is ATR (default), standard deviation, or linear-regression based. A close crossing the projected line triggers a 'B' breakout.",
+    "outputs": "Upper/lower trendlines, B break labels, alerts.",
+    "signal_type": "trend",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - breakout labels are not repainted/backpainted; trendline drawings are backpainted (offset to pivot) unless disabled",
+    "weaknesses": "Slope is synthetic (volatility-based), not fitted to actual touches. ~52k favorites.",
+    "related": [
+      "Trendlines with Breaks Oscillator [LuxAlgo]",
+      "Trendline Breakout Navigator [LuxAlgo]",
+      "Trendlines Oscillator [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-trend-lines",
+    "name": "Trend Lines [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/vE8YNVgM-Trend-Lines-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Classic swing-to-swing trendlines (lower highs, higher lows) with validity filters, break detection and angle estimation, designed for real-time use.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Swing = high/low that is highest/lowest against Length bars on both sides. Bearish line joins two lower swing highs, bullish joins two higher swing lows. Optional validation that no close breaks the line between point A and B (or A to current bar). A solid extension continues bar-by-bar; a break is counted only after the line was uninterrupted for 'Minimal bars'. Angle computed with user X-Y ratio and filterable by min/max degrees.",
+    "outputs": "Dotted confirmed trendlines, solid live extensions, break labels, angle labels.",
+    "signal_type": "trend",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - pivots/swings are only confirmed after the right-side lookback bars, so structure labels are placed retroactively; break events themselves fire in real time",
+    "weaknesses": "Angle depends on chart scaling ratio; lagged swings.",
+    "related": [
+      "Rolling Trendline [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-ml-trendlines-cluster",
+    "name": "Machine Learning Trendlines Cluster [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/9er1Qvpe-Machine-Learning-Trendlines-Cluster-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Finds multiple trendlines by clustering prices with k-means and fitting a linear regression to each cluster.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Prices over a window are partitioned into k clusters (user sets number of trendlines); a linear regression is fitted to the points of each cluster, giving one trendline per cluster; lines can be filtered by slope (remove too-flat or keep only flat).",
+    "outputs": "k trendlines extended to the right.",
+    "signal_type": "trend",
+    "timeframes": "unknown (any)",
+    "repaints": "unknown - rolling window refit implies lines change each bar",
+    "weaknesses": "Clusters of price values are not necessarily meaningful trend structures.",
+    "related": []
+  },
+  {
+    "id": "lux-market-flow-trend-lines-liquidity",
+    "name": "Market Flow Trend Lines & Liquidity [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/xEV9iqlj-Market-Flow-Trend-Lines-Liquidity-LuxAlgo/",
+    "access": "protected",
+    "license": "proprietary (closed-source, free to use)",
+    "what_it_does": "Closed-source but free breakout-trader toolkit: multi-timeframe trendlines, liquidity zones, opening ranges and gaps.",
+    "inputs": [
+      "ohlc",
+      "higher-timeframe",
+      "time/session"
+    ],
+    "core_math": "not public: claims automated MTF trendlines, key liquidity zones for entries, opening ranges and gaps",
+    "outputs": "Trendlines, liquidity zones, opening range and gap markings.",
+    "signal_type": "composite",
+    "timeframes": "unknown",
+    "repaints": "unknown - closed source",
+    "weaknesses": "Mechanism unverifiable.",
+    "related": []
+  },
+  {
+    "id": "lux-supertrend-ai-clustering",
+    "name": "SuperTrend AI (Clustering) [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/wP7WWjLL-SuperTrend-AI-Clustering-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Runs many SuperTrends over a range of ATR factors, scores each by recent performance, clusters the scores with k-means and uses the average factor of the chosen (best by default) cluster.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "For factors min..max by step, compute SuperTrend (shared ATR length). Performance per factor = exponential smoothing (memory alpha 0<a<1) of that SuperTrend's hypothetical per-bar return (price change signed by its direction - sign convention from the open source, page only gives the EMA form). K-means with k=3 (worst/average/best), centroids initialized at quartiles, iterated up to a max step count over the historical window. Final factor = mean factor of the selected cluster; a performance index of the chosen cluster drives an adaptive MA of the trailing stop (exact normalization not on page).",
+    "outputs": "Adaptive SuperTrend trailing stop, its adaptive MA, signals labelled with a performance score (low values ~ retracement, high ~ trend).",
+    "signal_type": "trend",
+    "timeframes": "unknown (any)",
+    "repaints": "no - computed on past bars only (not explicitly claimed by author; standard SuperTrend flips confirm on close)",
+    "weaknesses": "Performance-chasing: optimum factor adapts after regime change; heavy computation.",
+    "related": []
+  },
+  {
+    "id": "lux-knn-supertrend-horizon",
+    "name": "KNN Supertrend Horizon [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/O6LjCPzY-KNN-Supertrend-Horizon-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "SuperTrend whose trend state is determined by a k-nearest-neighbours classifier over RSI and ATR-volatility features, with confidence-graded candle colors and 'rejection orbs'.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Features: current RSI and ATR-based volatility. Over a 'Search Window' of past bars, find the K closest feature vectors; their trend labels vote on the current trend state, filtering the standard SuperTrend. Vote share = confidence, mapped to color intensity. Exhaustion 'Rejection Orbs' mark price rejections of the band.",
+    "outputs": "SuperTrend line, confidence-colored candles, rejection orbs, dashboard.",
+    "signal_type": "trend",
+    "timeframes": "unknown (any)",
+    "repaints": "unknown - not stated",
+    "weaknesses": "Neighbour labels definition not detailed on page; 2-feature space is small.",
+    "related": []
+  },
+  {
+    "id": "lux-evasive-supertrend",
+    "name": "Evasive SuperTrend [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/tfC7w3jE-Evasive-SuperTrend-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "SuperTrend variant that pushes its band away from price when price comes too close during noise, to reduce whipsaw flips.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Standard ATR(Length)*Base Multiplier band. If |price - band| < Noise Threshold * ATR, the band is shifted further away by Expansion Alpha * ATR ('evasive mode', drawn dotted).",
+    "outputs": "SuperTrend line (solid/dotted), BULL/BEAR labels, gradient fill.",
+    "signal_type": "trend",
+    "timeframes": "unknown (any)",
+    "repaints": "unknown - not stated; likely no on close",
+    "weaknesses": "Evasion delays genuine reversals.",
+    "related": []
+  },
+  {
+    "id": "lux-ai-channels-clustering",
+    "name": "AI Channels (Clustering) [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/dLXvYOtT-AI-Channels-Clustering-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Channel built by rolling k-means clustering of recent prices; breaking the upper/lower extremity signals trend. Can display as trailing stop.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Over the last 'Window Size' prices run k-means with user 'Clusters' count; upper extremity = centroid of highest cluster, lower = lowest cluster, middle = average cluster. 'Denoise' smooths centroids.",
+    "outputs": "Upper/middle/lower channel or trailing stop, trend coloring.",
+    "signal_type": "trend",
+    "timeframes": "unknown (any)",
+    "repaints": "no - rolling window on past data (not explicitly stated)",
+    "weaknesses": "More clusters widen extremes; centroids jump without denoise.",
+    "related": []
+  },
+  {
+    "id": "lux-nadaraya-watson-envelope",
+    "name": "Nadaraya-Watson Envelope [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/Iko0E2kL-Nadaraya-Watson-Envelope-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Contrarian envelope around a Gaussian-kernel regression of price; price crossing the envelope is expected to revert.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Gaussian-kernel Nadaraya-Watson estimate with 'Bandwidth'. Envelope = estimate +/- Mult * mean absolute deviation of price from the estimate. Repainting mode fits the full two-sided estimator over a window; non-repainting mode uses an endpoint (causal) estimator.",
+    "outputs": "Upper/lower envelope, triangles on crosses, alerts.",
+    "signal_type": "reversal",
+    "timeframes": "unknown (any)",
+    "repaints": "yes by default (two-sided kernel re-fits past values); non-repainting endpoint option available",
+    "weaknesses": "Default repainting mode looks far better on history than live; author has no performance data vs classic bands.",
+    "related": [
+      "Nadaraya-Watson Estimator"
+    ]
+  },
+  {
+    "id": "lux-nadaraya-watson-smoothers",
+    "name": "Nadaraya-Watson Smoothers [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/amRCTgFw-Nadaraya-Watson-Smoothers-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Kernel-regression smoother (Gaussian kernel) of price, usable as trend line; formerly 'Nadaraya-Watson Estimator'.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Weighted average of past prices with Gaussian weights exp(-d^2/(2h^2)) where h = bandwidth; smoothness set by bandwidth not window length. Repainting mode = full estimator; non-repainting = endpoint estimator behaving like a causal MA.",
+    "outputs": "Smoothed line with direction color change markers.",
+    "signal_type": "trend",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - repaints only when 'Repainting Smoothing' enabled",
+    "weaknesses": "Repainting mode unusable for signals.",
+    "related": [
+      "Nadaraya-Watson Estimator [LUX]"
+    ]
+  },
+  {
+    "id": "lux-gaussian-process-regression",
+    "name": "Machine Learning: Gaussian Process Regression [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/R5xWzGHS-Machine-Learning-Gaussian-Process-Regression-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Applies Gaussian Process Regression to the most recent prices to estimate the trend and forecast it forward.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "GPR over a 'Training Window' of recent prices with a kernel whose length-scale is 'Smooth' and noise level 'Sigma'; posterior mean gives the fitted trend and extrapolated forecast.",
+    "outputs": "Fitted curve over training window and forecast curve.",
+    "signal_type": "trend",
+    "timeframes": "unknown (any)",
+    "repaints": "yes - fit and forecast recomputed each bar over the window (description says adapted to real-time use)",
+    "weaknesses": "Forecasts are extrapolations; not for standalone use (author).",
+    "related": []
+  },
+  {
+    "id": "lux-ml-moving-average",
+    "name": "Machine Learning Moving Average [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/JkwUPCwp-Machine-Learning-Moving-Average-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Responsive moving average whose weights come from a Gaussian Process Regression weighting function, with bands for reversals.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Weights derived from GPR with Gaussian kernel (Sigma) over 'Window', with a 'Forecast' setting shifting responsiveness; resulting weights applied as a FIR moving average. Bands = MA +/- multiplicative factor * deviation, crossings mark turning points.",
+    "outputs": "MA line, upper/lower bands, turning-point markers.",
+    "signal_type": "trend",
+    "timeframes": "unknown (any)",
+    "repaints": "no - causal weights (not explicitly stated)",
+    "weaknesses": "Band deviation measure not detailed on page.",
+    "related": []
+  },
+  {
+    "id": "lux-ml-regression-trend",
+    "name": "Machine Learning Regression Trend [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/58YCiPaa-Machine-Learning-Regression-Trend-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Robust linear trend fitted with RANSAC to ignore outliers, extrapolated as a channel.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Repeat up to Max Iterations: pick 2 random samples in the Length window, fit a line, count inliers whose error is within the allowed error (auto from data scale or fixed); keep model if inliers >= Minimum Inliers; final = model with most inliers. Channel width = user Width.",
+    "outputs": "Regression line/channel extrapolated, outlier dots, allowed-error margin.",
+    "signal_type": "trend",
+    "timeframes": "unknown (any)",
+    "repaints": "yes - random sampling and refit on each bar",
+    "weaknesses": "Random sampling makes outputs non-deterministic.",
+    "related": [
+      "Periodic Linear Regressions [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-periodic-linear-regressions",
+    "name": "Periodic Linear Regressions [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/mKEtjG7e-Periodic-Linear-Regressions-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Anchored linear regressions that reset each user period (like VWAP), giving trend estimates and S/R.",
+    "inputs": [
+      "ohlc",
+      "time/session"
+    ],
+    "core_math": "At each period anchor (session/day/week etc.) the regression is restarted and fitted cumulatively on bars since the anchor; band construction not verified.",
+    "outputs": "Per-period regression lines and bands.",
+    "signal_type": "trend",
+    "timeframes": "intraday to swing via anchor",
+    "repaints": "conditional - fit of the current period updates as new bars arrive",
+    "weaknesses": "Early-period fits are unstable.",
+    "related": [
+      "Linear Regression Histogram [LuxAlgo]",
+      "Linear Regression Fan [LuxAlgo]",
+      "Volume Profile Regression Channel [LuxAlgo]",
+      "Rolling Trendline [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-echo-forecast",
+    "name": "The Echo Forecast [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/Y8v4W3mX-The-Echo-Forecast-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Analogue forecasting: finds the historical price segment most correlated with the recent segment and projects what followed it.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Within an evaluation window, compute correlation coefficient between the latest 'forecast window' of price changes and every earlier segment of same length; pick the most (or least) similar; append its subsequent changes to current price (Lorenz analogue method).",
+    "outputs": "Reference segment, matched segment, forecast path.",
+    "signal_type": "regime",
+    "timeframes": "unknown; best on detrended periodic series (author)",
+    "repaints": "yes - forecast recomputed each bar",
+    "weaknesses": "Single-analogue forecast, no uncertainty.",
+    "related": []
+  },
+  {
+    "id": "lux-indicator-configuration-forecasting",
+    "name": "Indicator Configuration Forecasting [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/qhIJ6UDH-Indicator-Configuration-Forecasting-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Encodes several indicators into a discrete state vector, finds the K most similar historical states and projects their forward returns as median and quartile paths.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "State vector of +1/-1/0 readings from RSI, SMA cross, SuperTrend, MACD, ADX. KNN search over Historical Lookback for Top K minimal vector distance, avoiding overlapping matches. Forward % returns over horizon N are projected; median (50th), 25th and 75th percentiles plotted.",
+    "outputs": "Median forecast path and 25-75 percentile bounds.",
+    "signal_type": "composite",
+    "timeframes": "unknown (any)",
+    "repaints": "yes - projection redrawn each bar",
+    "weaknesses": "Coarse discrete states; many ties.",
+    "related": []
+  },
+  {
+    "id": "lux-trama",
+    "name": "Trend Regularity Adaptive Moving Average [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/p8wGCPi6-Trend-Regularity-Adaptive-Moving-Average-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Exponential MA whose smoothing factor rises with how regularly new highest highs/lowest lows are being made, so it flattens in ranges and hugs price in long trends.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "alpha = (SMA over Length of an indicator that is 1 when a new rolling highest high or lowest low is made)^2; TRAMA = TRAMA[1] + alpha*(src - TRAMA[1]). Squaring penalizes low regularity.",
+    "outputs": "Single MA line.",
+    "signal_type": "trend",
+    "timeframes": "unknown (any)",
+    "repaints": "no - causal recursive filter",
+    "weaknesses": "Lags at trend reversals (author).",
+    "related": []
+  },
+  {
+    "id": "lux-signal-moving-average",
+    "name": "Signal Moving Average [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/L1NqQsyw-Signal-Moving-Average-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "MA intended as a crossover signal line that diverges from price in ranges (fewer crosses) and converges to a regular MA in trends.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "not public in description: claims adaptive divergence from price during ranging periods and convergence to a regular MA in trends (source is open but the formula is not described on the page)",
+    "outputs": "Signal line, price/line fill, trend/range coloring.",
+    "signal_type": "trend",
+    "timeframes": "unknown (any)",
+    "repaints": "unknown",
+    "weaknesses": "Formula not described publicly.",
+    "related": []
+  },
+  {
+    "id": "lux-ultimate-rsi",
+    "name": "Ultimate RSI [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/17Jj7Vcg-Ultimate-RSI-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Trend-following RSI variant that reaches and stays in OB/OS faster and crosses the midline less often.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Like RSI (normalized ratio of averaged up vs total moves), but when a new rolling highest high / lowest low over Length is made the price change is replaced by the rolling range (highest - lowest); averaged with EMA/SMA/RMA/TMA; separate smoothed signal line.",
+    "outputs": "Oscillator 0-100, signal line, OB/OS trend areas.",
+    "signal_type": "momentum",
+    "timeframes": "unknown (any)",
+    "repaints": "no - causal",
+    "weaknesses": "Designed for trend, not mean reversion; 11.6k favorites.",
+    "related": [
+      "RSI Regime Filter"
+    ]
+  },
+  {
+    "id": "lux-adaptive-momentum-oscillator",
+    "name": "Adaptive Momentum Oscillator [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/Uqk8zpzT-Adaptive-Momentum-Oscillator-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Unbounded momentum histogram based on the maximum price delta over a period, smoothed by an adaptive MA, with divergences.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "not public in description: claims relative momentum from 'maximum delta in price' over Data Length and an adaptive minimum-lag MA over the histogram; divergence length parameter",
+    "outputs": "Gradient histogram, adaptive signal line, divergence labels.",
+    "signal_type": "momentum",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - divergences need pivot confirmation",
+    "weaknesses": "Formula not described publicly.",
+    "related": [
+      "Adaptive MACD [LuxAlgo]",
+      "Stochastic Adaptive %D [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-squeeze-index",
+    "name": "Squeeze Index [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/Et6YD2t4-Squeeze-Index-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Measures price compression as a percentage using a damping analogy on exponential envelopes.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Compute exponential envelopes (convergence factor) of price; take log of (upper - lower); scale with LuxAlgo's 'correlation oscillator' (presumably correlation with time over Length; not spelled out) into a percentage - higher = more squeezed.",
+    "outputs": "Squeeze % line with threshold.",
+    "signal_type": "volatility",
+    "timeframes": "unknown (any)",
+    "repaints": "no - causal",
+    "weaknesses": "Retracements can read as squeezes (author).",
+    "related": [
+      "Volume Energy Reservoirs [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-market-sentiment-technicals",
+    "name": "Market Sentiment Technicals [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/fyQWNw7E-Market-Sentiment-Technicals-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Composite sentiment oscillator averaging normalized readings from momentum, trend and market-structure indicators, shown as meter, panel and oscillator with divergences.",
+    "inputs": [
+      "ohlc",
+      "higher-timeframe"
+    ],
+    "core_math": "Components: RSI, Stoch %K, Stoch RSI fast, CCI, Bull Bear Power, moving averages, Bollinger Bands, SuperTrend, linear regression, BOS/MSS structure. Oscillators normalized; trend tools converted to buy(+1)/sell(-1) state then normalized; each smoothed (default 3 SMA); overall = average of normalized sentiments.",
+    "outputs": "Sentiment panel, speedometer meter, oscillator with divergences.",
+    "signal_type": "composite",
+    "timeframes": "any; timeframe input",
+    "repaints": "no - causal averages (structure part conditional on pivots)",
+    "weaknesses": "Equal weighting of correlated inputs.",
+    "related": []
+  },
+  {
+    "id": "lux-reversal-signals",
+    "name": "Reversal Signals [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/qTWl7ZOy-Reversal-Signals-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Counter-trend exhaustion counter in two phases (momentum 9-count, exhaustion 13-count), in the style of sequential counting.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Momentum phase: count consecutive closes above (bull) or below (bear) the close 4 bars earlier up to 9 (rarely 8); completion flags potential reversal. Trend exhaustion phase: a subsequent 13-count (exact comparison rule for the 13-count not quoted).",
+    "outputs": "Count numbers, reversal labels, levels.",
+    "signal_type": "reversal",
+    "timeframes": "unknown (any)",
+    "repaints": "no - counts on closed bars",
+    "weaknesses": "Fires in strong trends repeatedly.",
+    "related": []
+  },
+  {
+    "id": "lux-rsi-candlestick-oscillator",
+    "name": "RSI Candlestick Oscillator [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/n6kC9obp-RSI-Candlestick-Oscillator-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Renders RSI as candlesticks by computing RSI for OHLC positions, and detects divergences from the RSI candle highs/lows.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Each OHLC point is located relative to the current RSI value to form an RSI candle; divergences are detected between price pivots and RSI-candle high/low pivots.",
+    "outputs": "RSI candles, divergence lines (optionally on price).",
+    "signal_type": "divergence",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - pivot-based divergences confirm late",
+    "weaknesses": "Exact OHLC mapping not detailed on page.",
+    "related": []
+  },
+  {
+    "id": "lux-htf-reversal-divergences",
+    "name": "HTF Reversal Divergences [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/ZF0M3jqb-HTF-Reversal-Divergences-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Multi-timeframe reversal tool combining higher-timeframe candle patterns, RSI regular divergences and PO3-style HTF candle projections.",
+    "inputs": [
+      "ohlc",
+      "higher-timeframe"
+    ],
+    "core_math": "RSI regular divergence: price lower low vs RSI higher low (bull), price higher high vs RSI lower high (bear), with HTF candle projection and pattern context.",
+    "outputs": "Divergence markers, projected HTF candles, reversal labels.",
+    "signal_type": "divergence",
+    "timeframes": "intraday with HTF context",
+    "repaints": "conditional - HTF values and divergence pivots confirm after bar close",
+    "weaknesses": "Details beyond RSI divergence not verified.",
+    "related": []
+  },
+  {
+    "id": "lux-liquidity-sentiment-profile",
+    "name": "Liquidity Sentiment Profile [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/asr7nOb2-Liquidity-Sentiment-Profile-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Sequence of anchored volume profiles with a sentiment (buy minus sell) profile on the left, significance-based value areas and a developing POC line.",
+    "inputs": [
+      "ohlc",
+      "volume",
+      "time/session"
+    ],
+    "core_math": "For each anchor period (AUTO default), volume is binned into N price rows (liquidity profile); sentiment row = bullish minus bearish volume (candle direction based; exact split not described). Rows are graded by significance to show value areas that can occur more than once; a 'Level of Significance' line tracks the developing POC.",
+    "outputs": "Profiles per period, sentiment profiles, POC line, value areas.",
+    "signal_type": "volume",
+    "timeframes": "any; anchor period",
+    "repaints": "conditional - current period profile updates until period ends",
+    "weaknesses": "Drawing limits cut history at high row counts.",
+    "related": []
+  },
+  {
+    "id": "lux-money-flow-profile",
+    "name": "Money Flow Profile [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/l2mefDKN-Money-Flow-Profile-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Volume or money-flow (price*volume) profile over a lookback, with a sentiment profile of buy vs sell flow and consolidation/node highlighting.",
+    "inputs": [
+      "ohlc",
+      "volume"
+    ],
+    "core_math": "Distributes volume or money flow of each bar into price rows over the lookback; sentiment = buy minus sell volume/flow per row; high-activity nodes marked as potential S/R and accumulation/distribution zones.",
+    "outputs": "Profile, sentiment profile, POC and node levels.",
+    "signal_type": "volume",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - rolling lookback profile redraws each bar",
+    "weaknesses": "Buy/sell split is estimated from candles, not true order flow.",
+    "related": [
+      "Delta Flow Profile [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-volume-profile-node-detection",
+    "name": "Volume Profile with Node Detection [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/zVCsx5DL-Volume-Profile-with-Node-Detection-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Volume profile that flags peak and trough volume nodes and their clusters.",
+    "inputs": [
+      "ohlc",
+      "volume"
+    ],
+    "core_math": "Profile built over lookback rows. A peak node is a row whose volume exceeds the N preceding and N succeeding rows (trough analogous); showing peaks with their surrounding N rows highlights consolidation zones.",
+    "outputs": "Profile, POC, VAH/VAL, highlighted peak/trough nodes.",
+    "signal_type": "volume",
+    "timeframes": "unknown (any)",
+    "repaints": "conditional - profile of rolling range redraws",
+    "weaknesses": "Node count sensitive to row size.",
+    "related": [
+      "Volume Profile [LuxAlgo]",
+      "Swing Volume Profiles [LuxAlgo]",
+      "Clusters Volume Profile [LuxAlgo]",
+      "Anchored Clusters Volume Profile [LuxAlgo]",
+      "Temporal Volume Profile 3D [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-atr-exceedance-probability-model",
+    "name": "ATR Exceedance Probability Model [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/YIL56q9W-ATR-Exceedance-Probability-Model-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Statistical volatility tool: counts ATR-band exceedances, z-scores their frequency versus a long baseline and classifies Quiet/Normal/High regimes with serial-break (follow-through) probability.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "Exceedance = true range or high/low beyond ATR * multiplier (bands from SMA/EMA basis or bar high/low). Frequency of exceedances compared with a 200-bar baseline via z-score; above sensitivity -> High Vol, below baseline -> contraction. Serial Break % = share of past exceedances followed immediately by another in the same direction.",
+    "outputs": "ATR bands, regime boxes, z-score oscillator, probability stats.",
+    "signal_type": "volatility",
+    "timeframes": "unknown (any)",
+    "repaints": "no - causal counts",
+    "weaknesses": "Short-sample probabilities noisy.",
+    "related": [
+      "Volatility Exceedance Probability Model"
+    ]
+  },
+  {
+    "id": "lux-multi-horizon-volatility-waterfall",
+    "name": "Multi-Horizon Volatility Waterfall [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/QuYs1iMf-Multi-Horizon-Volatility-Waterfall-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Displays volatility across ten horizons as a heatmap spectrum to spot volatility clusters and regime shifts.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "ATR computed for ten lookback horizons, each normalized by percentile rank over history; layers stacked as a waterfall/heatmap.",
+    "outputs": "Multi-row volatility heatmap.",
+    "signal_type": "volatility",
+    "timeframes": "unknown (any)",
+    "repaints": "no - causal",
+    "weaknesses": "Percentile rank depends on lookback; descriptive.",
+    "related": [
+      "Volatility Signature Plot"
+    ]
+  },
+  {
+    "id": "lux-sessions",
+    "name": "Sessions [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/bkb6vZDz-Sessions-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Highlights up to 4 user sessions (forex sessions by default) and computes per-session range, trendline, mean and VWAP.",
+    "inputs": [
+      "ohlc",
+      "volume",
+      "time/session"
+    ],
+    "core_math": "For bars inside each session: range = running high/low box, trendline = session trendline of closes (fit method not stated), mean = running average close, VWAP = session volume-weighted price.",
+    "outputs": "Session boxes, trendlines, means, VWAPs, dashboard.",
+    "signal_type": "session",
+    "timeframes": "intraday; accuracy degrades above 1H (author)",
+    "repaints": "conditional - current session values update until session ends",
+    "weaknesses": "Fixed clock sessions; DST handling depends on timezone input.",
+    "related": [
+      "Session Levels Predictor [LuxAlgo]",
+      "Session Streaks [LuxAlgo]",
+      "Session Volume Moving Average [LuxAlgo]",
+      "Session Gap Fill [LuxAlgo]"
+    ]
+  },
+  {
+    "id": "lux-ict-killzones-toolkit",
+    "name": "ICT Killzones Toolkit [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/9kY5NlHJ-ICT-Killzones-Toolkit-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Session-scoped ICT toolkit: marks killzones with their pivots, and detects order blocks, breaker blocks, FVGs and MSS occurring within the killzone.",
+    "inputs": [
+      "ohlc",
+      "time/session"
+    ],
+    "core_math": "Killzones = fixed time windows (Asia, London, NY sessions). Within each, session high/low pivots are extended as levels; OB, breaker, FVG (3-bar) and MSS logic run only on bars in the killzone.",
+    "outputs": "Killzone boxes, pivot levels, OB/breaker/FVG boxes, MSS lines.",
+    "signal_type": "session",
+    "timeframes": "intraday",
+    "repaints": "conditional - killzone pivots final only at session end",
+    "weaknesses": "Clock-based assumptions.",
+    "related": [
+      "Session Sweeps [LuxAlgo]",
+      "Session Sweep & iFVG RR"
+    ]
+  },
+  {
+    "id": "lux-universal-signal-backtester",
+    "name": "Universal Signal Backtester [LuxAlgo]",
+    "source": "LuxAlgo",
+    "url": "https://www.tradingview.com/script/Y5CIZ9CB-Universal-Signal-Backtester-LuxAlgo/",
+    "access": "open-source",
+    "license": "CC BY-NC-SA 4.0 (LuxAlgo's standard open-source header; not shown on page, not re-verified per script)",
+    "what_it_does": "Indicator-based backtester that takes signals from any other indicator (plotted source) and simulates trades with up to three TP and SL levels and a performance dashboard.",
+    "inputs": [
+      "external-signal",
+      "ohlc"
+    ],
+    "core_math": "Signal modes: predefined crosses, external source crossovers, external triggers (value change, cross 0, not-na). Each signal opens a simulated trade with TP/SL distances in ATR, ticks or points; optional ATR choppiness filter; cost profiles. Metrics: trades, win rate, profit factor, Sharpe, recovery factor, equity curve, weekday/month heatmaps.",
+    "outputs": "Entry markers, TP/SL lines, dashboard and equity curve.",
+    "signal_type": "composite",
+    "timeframes": "any",
+    "repaints": "depends on input signal (no lookahead info documented)",
+    "weaknesses": "Indicator-simulated fills, not strategy engine.",
+    "related": []
+  },
+  {
+    "id": "lux-signals-overlays-signals",
+    "name": "LuxAlgo Signals & Overlays - Confirmation/Contrarian Signals",
+    "source": "LuxAlgo",
+    "url": "https://docs.luxalgo.com/platform/algos/signals-overlays/signals",
+    "access": "paid-toolkit",
+    "license": "proprietary (invite-only, paid subscription)",
+    "what_it_does": "Core signal engine of the Signals & Overlays toolkit: trend-following Confirmation signals and counter-trend Contrarian signals, each with normal/strong(+) grades, exits and a 1-4 'ML classifier' rating.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "not public: Confirmation = 'performance adaptive trend following methodology'; Contrarian = fast counter-trend signals, strong(+) in overbought/oversold; adaptive-threshold classifier rates 1-4; sensitivity/agility settings, 'Autopilot' and grid-search optimal sensitivity",
+    "outputs": "Buy/sell labels (normal, +), exit crosses, classifier numbers, TP/SL points, candle coloring, dashboard (trend strength, volatility, volume sentiment, squeeze, session).",
+    "signal_type": "composite",
+    "timeframes": "any (sensitivity adapted per TF)",
+    "repaints": "conditional - docs: signals confirmed at the open of the next candle and may change before confirmation",
+    "weaknesses": "Closed source; claims untestable outside their backtester.",
+    "related": [
+      "LuxAlgo Screener (S&O)",
+      "Kantan-Ashi/Taki-Ashi/Yumi-Ashi candles"
+    ]
+  },
+  {
+    "id": "lux-signals-overlays-smart-trail",
+    "name": "LuxAlgo Signals & Overlays - Smart Trail",
+    "source": "LuxAlgo",
+    "url": "https://docs.luxalgo.com/platform/algos/signals-overlays/indicator-overlay",
+    "access": "paid-toolkit",
+    "license": "proprietary (invite-only, paid subscription)",
+    "what_it_does": "Trailing stop overlay that diverges from price in the presence of unwanted variation within a trend, with support/resistance areas.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "not public: trailing stop that 'diverges from the price in the presence of unwanted price variations'; sensitivity 1-5 (default 3)",
+    "outputs": "Trailing stop line with blue support / red resistance areas; used as filter for signals.",
+    "signal_type": "trend",
+    "timeframes": "unknown",
+    "repaints": "unknown - closed source",
+    "weaknesses": "Closed source.",
+    "related": []
+  },
+  {
+    "id": "lux-signals-overlays-reversal-zones",
+    "name": "LuxAlgo Signals & Overlays - Reversal Zones",
+    "source": "LuxAlgo",
+    "url": "https://docs.luxalgo.com/platform/algos/signals-overlays/indicator-overlay",
+    "access": "paid-toolkit",
+    "license": "proprietary (invite-only, paid subscription)",
+    "what_it_does": "Upper and lower zones meant to catch tops and bottoms, more effective in ranges.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "not public: zones for tops/bottoms; sensitivity 1-5 (default 3)",
+    "outputs": "Upper/lower zone bands.",
+    "signal_type": "reversal",
+    "timeframes": "unknown",
+    "repaints": "unknown - closed source",
+    "weaknesses": "Closed source; weaker in trends (docs).",
+    "related": []
+  },
+  {
+    "id": "lux-signals-overlays-trend-overlays",
+    "name": "LuxAlgo Signals & Overlays - Trend Tracer / Trend Catcher / Neo Cloud",
+    "source": "LuxAlgo",
+    "url": "https://docs.luxalgo.com/platform/algos/signals-overlays/indicator-overlay",
+    "access": "paid-toolkit",
+    "license": "proprietary (invite-only, paid subscription)",
+    "what_it_does": "Trend overlays: Trend Tracer (underlying trend estimate), Trend Catcher (more reactive early-trend detector) and Neo Cloud (Ichimoku-like cloud with trend-age gradient).",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "not public: trend-following estimators with sensitivity 1-5; Neo Cloud 'similar in effect to the Ichimoku Cloud'",
+    "outputs": "Colored trend lines and cloud acting as trailing S/R.",
+    "signal_type": "trend",
+    "timeframes": "unknown",
+    "repaints": "unknown - closed source",
+    "weaknesses": "Closed source.",
+    "related": [
+      "HyperTrend overlay"
+    ]
+  },
+  {
+    "id": "lux-pac-market-structure",
+    "name": "LuxAlgo Price Action Concepts - Market Structure (CHoCH/CHoCH+/BOS)",
+    "source": "LuxAlgo",
+    "url": "https://docs.luxalgo.com/platform/algos/price-action-concepts/market-structures",
+    "access": "paid-toolkit",
+    "license": "proprietary (invite-only, paid subscription)",
+    "what_it_does": "Real-time internal and swing market structure with a 'supported' CHoCH+ label, EQH/EQL and structure candle coloring, multi-timeframe.",
+    "inputs": [
+      "ohlc",
+      "higher-timeframe"
+    ],
+    "core_math": "Documented: internal structure from short-term swings (lookback 5-49), swing structure from longer swings; CHoCH = break of prior swing low in uptrend / high in downtrend; BOS = break in trend direction; CHoCH+ = CHoCH preceded by a failed higher high / lower low. Exact pivot logic not public.",
+    "outputs": "Structure labels/lines, EQH/EQL, strong/weak highs-lows, candle coloring.",
+    "signal_type": "structure",
+    "timeframes": "any; MTF dashboard 15m/1h/4h/1d",
+    "repaints": "conditional - pivots/swings are only confirmed after the right-side lookback bars, so structure labels are placed retroactively; break events themselves fire in real time",
+    "weaknesses": "Closed source.",
+    "related": [
+      "LuxAlgo Screener (PAC)"
+    ]
+  },
+  {
+    "id": "lux-pac-volumetric-order-blocks",
+    "name": "LuxAlgo Price Action Concepts - Volumetric Order Blocks",
+    "source": "LuxAlgo",
+    "url": "https://docs.luxalgo.com/docs/luxalgo-toolkits/price-action-concepts/order-blocks",
+    "access": "paid-toolkit",
+    "license": "proprietary (invite-only, paid subscription)",
+    "what_it_does": "Order blocks near swing lows/highs annotated with internal buy/sell activity, accumulated volume and share of total OB volume; breakers on mitigation.",
+    "inputs": [
+      "ohlc",
+      "volume"
+    ],
+    "core_math": "Documented: swing 'Length' lookback; bullish OB near swing lows, bearish near swing highs; mitigation by Close, Wick or Average (crossing midpoint); internal bull/bear activity bars and volume %. Selection formula not public.",
+    "outputs": "OB boxes with volume metrics, breaker blocks, alerts on OB volume conditions.",
+    "signal_type": "zone",
+    "timeframes": "any; MTF order blocks",
+    "repaints": "conditional - pivots/swings are only confirmed after the right-side lookback bars, so structure labels are placed retroactively; break events themselves fire in real time",
+    "weaknesses": "Closed source; volume split is estimated.",
+    "related": []
+  },
+  {
+    "id": "lux-pac-liquidity",
+    "name": "LuxAlgo Price Action Concepts - Liquidity (Trendline Liquidity, Pattern Liquidity, Liquidity Grabs, Imbalances)",
+    "source": "LuxAlgo",
+    "url": "https://docs.luxalgo.com/docs/algos/price-action-concepts/liquidity",
+    "access": "paid-toolkit",
+    "license": "proprietary (invite-only, paid subscription)",
+    "what_it_does": "Liquidity layer of PAC: trendline liquidity zones, chart-pattern liquidity (triangles, wedges, double tops, H&S), liquidity grabs, EQH/EQL, plus imbalance types (FVG, inverse FVG, double FVG, volume imbalance, opening gap) and premium/discount, accumulation/distribution zones.",
+    "inputs": [
+      "ohlc",
+      "volume"
+    ],
+    "core_math": "not public: trendlines 'constructed by taking into account the amount of liquidity at certain price levels'; grabs 'where trading activity took place in more liquid areas'; patterns from swing points",
+    "outputs": "Liquidity trendline zones, pattern outlines, grab boxes on wicks, imbalance boxes.",
+    "signal_type": "liquidity",
+    "timeframes": "any",
+    "repaints": "unknown - closed source",
+    "weaknesses": "Closed source.",
+    "related": []
+  },
+  {
+    "id": "lux-osc-hyperwave",
+    "name": "LuxAlgo Oscillator Matrix - HyperWave",
+    "source": "LuxAlgo",
+    "url": "https://docs.luxalgo.com/platform/algos/oscillator-matrix/hyperwave",
+    "access": "paid-toolkit",
+    "license": "proprietary (invite-only, paid subscription)",
+    "what_it_does": "Primary normalized adaptive oscillator of Oscillator Matrix, with signal line, turning-point dots and real-time divergences.",
+    "inputs": [
+      "ohlc"
+    ],
+    "core_math": "not public: 'adaptive oscillator... normalized without a high amount of noise'. Documented rules: signal line = SMA of HyperWave or a trailing stop of it; cross dots enlarged when cross-up below 20 or cross-down above 80; divergence sensitivity %",
+    "outputs": "Oscillator 0-100, signal line, reversal dots/arrows, divergence lines on chart.",
+    "signal_type": "momentum",
+    "timeframes": "any",
+    "repaints": "unknown - divergences real-time per docs",
+    "weaknesses": "Closed source.",
+    "related": []
+  },
+  {
+    "id": "lux-osc-smart-money-flow",
+    "name": "LuxAlgo Oscillator Matrix - Smart Money Flow & Overflow",
+    "source": "LuxAlgo",
+    "url": "https://docs.luxalgo.com/docs/luxalgo-toolkits/oscillator-matrix/smart-money-flow",
+    "access": "paid-toolkit",
+    "license": "proprietary (invite-only, paid subscription)",
+    "what_it_does": "Money-flow oscillator centred on 50 with dynamic upper/lower thresholds, plus 'Overflow' marking excess liquidity relative to trend length.",
+    "inputs": [
+      "ohlc",
+      "volume"
+    ],
+    "core_math": "not public: detects 'trends based on market participants activity'; thresholds mark one-sided activity; Overflow = excessive liquidity relative to trend length, flags late trend followers/possible reversals",
+    "outputs": "Money flow wave, thresholds, overflow highlights.",
+    "signal_type": "volume",
+    "timeframes": "any",
+    "repaints": "unknown - closed source",
+    "weaknesses": "Closed source.",
+    "related": []
+  },
+  {
+    "id": "lux-osc-confluence",
+    "name": "LuxAlgo Oscillator Matrix - Confluence Zones & Meter",
+    "source": "LuxAlgo",
+    "url": "https://docs.luxalgo.com/docs/luxalgo-toolkits/oscillator-matrix/confluence",
+    "access": "paid-toolkit",
+    "license": "proprietary (invite-only, paid subscription)",
+    "what_it_does": "Grades agreement between HyperWave and Money Flow as shaded strips above 100/below 0 and an optional at-price meter.",
+    "inputs": [
+      "ohlc",
+      "volume"
+    ],
+    "core_math": "Documented rule: zone darker when both HyperWave and Money Flow indicate the same trend, lighter when only one does; meter aggregates HyperWave vs signal, HyperWave trend, Money Flow, Overflow and divergences (weights not public)",
+    "outputs": "Confluence strips, meter, numeric outputs for external scripts.",
+    "signal_type": "composite",
+    "timeframes": "any",
+    "repaints": "unknown",
+    "weaknesses": "Components closed source.",
+    "related": [
+      "LuxAlgo Screener (OSC)"
+    ]
+  },
+  {
+    "id": "lux-toolkit-backtesters",
+    "name": "LuxAlgo Backtesters (S&O / PAC / OSC) and LUCID",
+    "source": "LuxAlgo",
+    "url": "https://docs.luxalgo.com/docs/backtesters/s-o/introduction",
+    "access": "paid-toolkit",
+    "license": "proprietary (invite-only, paid subscription)",
+    "what_it_does": "Strategy scripts that backtest conditions built from the three toolkits' features (entries, exits, TP/SL, optimization); LUCID combines trigger placeholders from all three.",
+    "inputs": [
+      "toolkit-outputs",
+      "ohlc"
+    ],
+    "core_math": "not public: condition builder over toolkit features; defaults 2000-bar window, 10,000 capital, 1 contract, 0% commission; optimization module",
+    "outputs": "Strategy tester trades and performance metrics.",
+    "signal_type": "composite",
+    "timeframes": "any",
+    "repaints": "unknown - docs do not discuss lookahead/repainting",
+    "weaknesses": "Default zero commission; synthetic-data warning.",
+    "related": [
+      "AI Backtesting Assistant"
+    ]
+  },
+  {
+    "id": "lux-toolkit-screeners",
+    "name": "LuxAlgo Screeners (S&O / PAC / OSC)",
+    "source": "LuxAlgo",
+    "url": "https://docs.luxalgo.com/platform/algos/screeners/osc/introduction",
+    "access": "paid-toolkit",
+    "license": "proprietary (invite-only, paid subscription)",
+    "what_it_does": "Tables reporting latest toolkit states (signals, overlays, structure, OBs, imbalances, oscillator states) for up to 10 tickers on a chosen timeframe, with rating, filtering and sorting.",
+    "inputs": [
+      "toolkit-outputs",
+      "multi-symbol"
+    ],
+    "core_math": "not public: request.security of toolkit features across 10 symbols with a rating scale",
+    "outputs": "Screener table.",
+    "signal_type": "composite",
+    "timeframes": "user-set",
+    "repaints": "unknown",
+    "weaknesses": "10-ticker limit.",
+    "related": []
+  }
+]
