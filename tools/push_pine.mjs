@@ -4,12 +4,12 @@
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-const JACKSON = process.env.TV_MCP_DIR || 'C:/Users/user/tradingview-mcp-jackson';
-const pine = await import(pathToFileURL(`${JACKSON}/src/core/pine.js`).href);
+const TV_MCP = process.env.TV_MCP_DIR || 'C:/Users/user/Model/tools/tradingview-mcp';
+const pine = await import(pathToFileURL(`${TV_MCP}/src/core/pine.js`).href);
 
-const { evaluate } = await import(pathToFileURL(`${JACKSON}/src/connection.js`).href);
+const { evaluate } = await import(pathToFileURL(`${TV_MCP}/src/connection.js`).href);
 
-// TV Desktop 3.x shows Pine as a floating dialog that Jackson's opener doesn't find; open it via the sidebar button.
+// TV Desktop 3.x shows Pine as a floating dialog ; open it via the sidebar button if it is closed.
 const hasEditor = () => evaluate(`!!document.querySelector('.monaco-editor.pine-editor-monaco')`);
 if (!(await hasEditor())) {
   await evaluate(`(function(){var b=document.querySelector('[data-name="pine-dialog-button"]');if(b)b.click();})()`);

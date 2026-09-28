@@ -18,6 +18,6 @@ cp .env.example .env   # add TYPESAFE_API_KEY
 ```
 
 ## Fast TradingView loop (no screenshots)
-Needs TradingView Desktop running with `--remote-debugging-port=9222` and the `tradingview-mcp-jackson` repo at `C:/Users/user/tradingview-mcp-jackson` (or `TV_MCP_DIR`).
+Needs TradingView Desktop running with `--remote-debugging-port=9222` and the `tradingview-mcp` (tradesdontlie) checkout at `C:/Users/user/Model/tools/tradingview-mcp` (or `TV_MCP_DIR`).
 - `node tools/push_pine.mjs pine/botmax_v0.pine` — load the file into the open Botmax script and save (refuses non-Botmax scripts).
 - `node tools/bt.mjs` — metrics + setup funnel in ~0.2 s. `--set '{"<input title>": v}'`, `--grid '{"<input title>": [..]}'`, `--trades`.

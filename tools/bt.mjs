@@ -1,4 +1,4 @@
-// Fast backtest loop over the live TradingView chart, via the tradingview-mcp-jackson core (CDP).
+// Fast backtest loop over the live TradingView chart, via the tradingview-mcp core (CDP).
 // No UI clicking, no screenshots: reads the strategy object's report and plot data directly.
 //
 //   node tools/bt.mjs                                   current inputs -> metrics + funnel
@@ -7,14 +7,14 @@
 //   add --trades to include the trade list; add --keep to leave the last inputs applied
 import { pathToFileURL } from 'node:url';
 
-const JACKSON = process.env.TV_MCP_DIR || 'C:/Users/user/tradingview-mcp-jackson';
-const { evaluate } = await import(pathToFileURL(`${JACKSON}/src/connection.js`).href);
+const TV_MCP = process.env.TV_MCP_DIR || 'C:/Users/user/Model/tools/tradingview-mcp';
+const { evaluate } = await import(pathToFileURL(`${TV_MCP}/src/connection.js`).href);
 
 const args = process.argv.slice(2);
 const opt = (k) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : undefined; };
 const STUDY = opt('--study') || 'Botmax';
 
-// Page-side helper: find the strategy by title (Jackson's reader misses overlay strategies).
+// Page-side helper: find the strategy by title (by title, so only the Botmax strategy is read).
 const FIND = `(function(){var m=window.TradingViewApi._activeChartWidgetWV.value()._chartWidget.model().model();
   return m.dataSources().find(function(s){return s.metaInfo&&s.metaInfo().description.indexOf(${JSON.stringify(STUDY)})>=0;});})()`;
 

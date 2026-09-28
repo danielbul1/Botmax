@@ -2,8 +2,8 @@
 // Usage: node tools/export_bars.mjs data/nq_5m_tv.csv [maxRequests]
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-const JACKSON = process.env.TV_MCP_DIR || 'C:/Users/user/tradingview-mcp-jackson';
-const { evaluate } = await import(pathToFileURL(`${JACKSON}/src/connection.js`).href);
+const TV_MCP = process.env.TV_MCP_DIR || 'C:/Users/user/Model/tools/tradingview-mcp';
+const { evaluate } = await import(pathToFileURL(`${TV_MCP}/src/connection.js`).href);
 const MS = `window.TradingViewApi._activeChartWidgetWV.value()._chartWidget.model().mainSeries()`;
 const size = () => evaluate(`${MS}.bars().size()`);
 const max = Number(process.argv[3] || 40);
