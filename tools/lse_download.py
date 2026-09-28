@@ -28,22 +28,25 @@ def find(client):
 
 def download(client, symbol, dataset=None):
     have = pd.read_csv(OUT) if OUT.exists() else pd.DataFrame()
-    start = pd.to_datetime(have["time"].max() + 1, unit="s", utc=True).isoformat() if len(have) else "1990-01-01"
+    start = pd.to_datetime(have["time"].max(), unit="s", utc=True).strftime("%Y-%m-%d") if len(have) else "1990-01-01"
     frames = [have] if len(have) else []
     while True:
         rows = client.candles(symbol, "5m", start=start, limit=5000, order="asc", dataset=dataset)
         if not rows:
             break
         df = pd.DataFrame(rows)
-        df["time"] = pd.to_datetime(df["timestamp"], utc=True).astype("int64") // 10**9
+        # to seconds via datetime64[s]: astype("int64") on a tz-aware column depends on its unit (ns/us)
+        df["time"] = pd.to_datetime(df["timestamp"], utc=True).dt.tz_convert(None).to_numpy().astype("datetime64[s]").astype("int64")
         df = df[["time", "open", "high", "low", "close", "volume"]]
+        prev_last = int(frames[-1]["time"].max()) if frames else -1
         frames.append(df)
         last = int(df["time"].max())
         print(f"  {len(df)} bars up to {pd.to_datetime(last, unit='s', utc=True)}", flush=True)
         pd.concat(frames).drop_duplicates("time").sort_values("time").to_csv(OUT, index=False)
-        if len(df) < 5000:
+        if len(df) < 5000 or last <= prev_last:
             break
-        start = pd.to_datetime(last + 1, unit="s", utc=True).isoformat()
+        # the API takes whole days (YYYY-MM-DD): restart at the last bar's day, duplicates are dropped
+        start = pd.to_datetime(last, unit="s", utc=True).strftime("%Y-%m-%d")
         time.sleep(0.35)  # stay under 200 calls/min
     out = pd.read_csv(OUT)
     t = pd.to_datetime(out["time"], unit="s", utc=True)

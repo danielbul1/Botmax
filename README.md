@@ -24,7 +24,8 @@ Needs TradingView Desktop running with `--remote-debugging-port=9222` and the `t
 
 ## Walk-forward test on long history (no TradingView)
 `research/engine.py` reproduces v0 exactly (`python research/parity.py`: 7/7 signals, 3/3 trades vs TradingView).
-`python research/wf.py [data/nq_5m_ibkr.csv]` runs a small grid over the full history, picks parameters on each
+`python research/wf.py [data/nq_5m_lse.csv]` runs a small grid over the full history, picks parameters on each
 train window and records only the next test window's trades (out-of-sample), then writes `research/WF_REPORT.md`
-with a bootstrap p-value next to the fixed defaults. Roll days are skipped. Get the data with `tools/ibkr_download.py`
-(TWS/Gateway) or `tools/lse_download.py`; to run it in a cloud session, commit the CSV with `git add -f data/nq_5m_ibkr.csv`.
+with a bootstrap p-value next to the fixed defaults. Roll days are skipped (inferred from the gaps when the CSV has no
+`contract` column). Data: `LSE_API_KEY=... python tools/lse_download.py NQ.F futures` (10 years of NQ 5m, ~7 min) or
+`tools/ibkr_download.py` (TWS/Gateway). Latest result: `research/WF_REPORT.md`.

@@ -10,10 +10,11 @@ TradingView only for final confirmation. This script is the honest version of th
      the number of combinations tried (the more we try, the more luck can look like an edge).
 
 Trades on contract roll days (and the day after, whose PDH/PDL come from the old contract) are
-dropped, because stitched futures jump at the roll.
+dropped, because stitched futures jump at the roll. Without a contract column the roll days are
+inferred from the opening gaps (infer_rolls).
 
-Usage: python research/wf.py [csv] [--train 180] [--test 60] [--min-trades 15]
-  csv: time (UTC seconds), open, high, low, close [, contract]; default data/nq_5m_ibkr.csv
+Usage: python research/wf.py [csv] [--train 365] [--test 90] [--min-trades 10]
+  csv: time (UTC seconds), open, high, low, close [, contract]; default data/nq_5m_lse.csv
 Writes research/WF_REPORT.md and data/wf_oos_trades.csv.
 """
 import argparse
@@ -44,16 +45,32 @@ def load(path):
     return df
 
 
+def infer_rolls(df, tday):
+    """Roll days of an unadjusted continuous series without a contract column (e.g. LSE NQ.F).
+
+    NQ rolls in the week before the quarterly expiry (3rd Friday of Mar/Jun/Sep/Dec), and the new
+    contract trades higher (carry), so the roll shows up as the largest bar-to-bar gap up among the
+    trading days from the 5th to the 22nd of each expiry month (LSE switches at 00:00 UTC, mid-session).
+    """
+    gap = (df["open"] - df["close"].shift(1)).set_axis(tday.values)
+    keep = [d.month % 3 == 0 and 5 <= d.day <= 22 for d in gap.index]
+    gap = gap[keep]
+    months = [d.year * 100 + d.month for d in gap.index]
+    return [grp.idxmax() for _, grp in gap.groupby(months) if grp.max() > 0]
+
+
 def roll_days(df):
     """Trading days (CME, starting 18:00 NY) on which the contract changes, plus the day after."""
-    if "contract" not in df:
-        return set()
     t = pd.to_datetime(df["time"], unit="s", utc=True).dt.tz_convert(NY)
     tday = (t + pd.Timedelta(hours=6)).dt.date
     days = sorted(set(tday))
     idx = {d: k for k, d in enumerate(days)}
+    if "contract" in df:
+        rolls = list(tday[df["contract"] != df["contract"].shift(1)].iloc[1:])
+    else:
+        rolls = infer_rolls(df, tday)
     out = set()
-    for d in tday[df["contract"] != df["contract"].shift(1)].iloc[1:]:
+    for d in rolls:
         out.add(d)
         if idx[d] + 1 < len(days):
             out.add(days[idx[d] + 1])
@@ -75,9 +92,9 @@ def stats(t):
     pnl = t["pnl"].astype(float)
     wins, losses = pnl[pnl > 0].sum(), -pnl[pnl <= 0].sum()
     eq = pnl.cumsum()
-    return dict(trades=len(t), net=round(pnl.sum(), 2), win_rate=round((pnl > 0).mean(), 3),
-                pf=round(wins / losses, 2) if losses > 0 else None, avg=round(pnl.mean(), 2),
-                max_dd=round((eq.cummax() - eq).max(), 2))
+    return dict(trades=len(t), net=round(float(pnl.sum()), 2), win_rate=round(float((pnl > 0).mean()), 3),
+                pf=round(float(wins / losses), 2) if losses > 0 else None, avg=round(float(pnl.mean()), 2),
+                max_dd=round(float((eq.cummax() - eq).max()), 2))
 
 
 def bootstrap_p(pnl, n=10000, seed=0):
@@ -99,10 +116,10 @@ def score(t, min_trades):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("csv", nargs="?", default=str(ROOT / "data" / "nq_5m_ibkr.csv"))
-    ap.add_argument("--train", type=int, default=180, help="train window, calendar days")
-    ap.add_argument("--test", type=int, default=60, help="test window, calendar days")
-    ap.add_argument("--min-trades", type=int, default=15, help="min train trades to be selectable")
+    ap.add_argument("csv", nargs="?", default=str(ROOT / "data" / "nq_5m_lse.csv"))
+    ap.add_argument("--train", type=int, default=365, help="train window, calendar days")
+    ap.add_argument("--test", type=int, default=90, help="test window, calendar days")
+    ap.add_argument("--min-trades", type=int, default=10, help="min train trades to be selectable")
     ap.add_argument("--report", default=str(ROOT / "research" / "WF_REPORT.md"))
     a = ap.parse_args()
 
@@ -138,7 +155,7 @@ def main():
             best, s = None, dict(trades=0, net=0.0)
         folds.append(dict(test=f"{pd.to_datetime(lo, unit='s').date()} -> {pd.to_datetime(hi, unit='s').date()}",
                           combo=combos[best] if best is not None else "none (too few train trades)",
-                          train_net=round(scores[best], 2) if best is not None else None, **s))
+                          train_net=round(float(scores[best]), 2) if best is not None else None, **s))
         lo = hi
 
     oos = pd.concat(oos, ignore_index=True) if oos else pd.DataFrame()
@@ -163,6 +180,10 @@ def main():
         "also holds on data we have not looked at yet.", "",
         "## Folds", "", "| test window | picked | train net $ | test trades | test net $ |", "|---|---|---|---|---|",
         *[f"| {f['test']} | {f['combo']} | {f['train_net']} | {f['trades']} | {f['net']} |" for f in folds], "",
+        "## Fixed defaults by year (whole history)", "",
+        "| year | trades | net $ |", "|---|---|---|",
+        *[f"| {y} | {len(g)} | {round(float(g['pnl'].sum()), 2)} |"
+          for y, g in default.groupby(pd.to_datetime(default["entry_time"], unit="s").dt.year)], "",
         "## In-sample, full history (optimistic, for context only)", "",
         f"Best combination over everything: {combos[best_full]} -> {full[best_full]}. "
         f"Picking the best of {len(combos)} after the fact overstates the edge; compare with the out-of-sample row.", "",
