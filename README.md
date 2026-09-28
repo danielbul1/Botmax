@@ -21,3 +21,10 @@ cp .env.example .env   # add TYPESAFE_API_KEY
 Needs TradingView Desktop running with `--remote-debugging-port=9222` and the `tradingview-mcp-jackson` repo at `C:/Users/user/tradingview-mcp-jackson` (or `TV_MCP_DIR`).
 - `node tools/push_pine.mjs pine/botmax_v0.pine` — load the file into the open Botmax script and save (refuses non-Botmax scripts).
 - `node tools/bt.mjs` — metrics + setup funnel in ~0.2 s. `--set '{"<input title>": v}'`, `--grid '{"<input title>": [..]}'`, `--trades`.
+
+## Walk-forward test on long history (no TradingView)
+`research/engine.py` reproduces v0 exactly (`python research/parity.py`: 7/7 signals, 3/3 trades vs TradingView).
+`python research/wf.py [data/nq_5m_ibkr.csv]` runs a small grid over the full history, picks parameters on each
+train window and records only the next test window's trades (out-of-sample), then writes `research/WF_REPORT.md`
+with a bootstrap p-value next to the fixed defaults. Roll days are skipped. Get the data with `tools/ibkr_download.py`
+(TWS/Gateway) or `tools/lse_download.py`; to run it in a cloud session, commit the CSV with `git add -f data/nq_5m_ibkr.csv`.
