@@ -16,3 +16,8 @@ python -m venv .venv && .venv/Scripts/pip install typesafe-sdk python-dotenv
 cp .env.example .env   # add TYPESAFE_API_KEY
 .venv/Scripts/python research/build_graph.py 70
 ```
+
+## Fast TradingView loop (no screenshots)
+Needs TradingView Desktop running with `--remote-debugging-port=9222` and the `tradingview-mcp-jackson` repo at `C:/Users/user/tradingview-mcp-jackson` (or `TV_MCP_DIR`).
+- `node tools/push_pine.mjs pine/botmax_v0.pine` — load the file into the open Botmax script and save (refuses non-Botmax scripts).
+- `node tools/bt.mjs` — metrics + setup funnel in ~0.2 s. `--set '{"<input title>": v}'`, `--grid '{"<input title>": [..]}'`, `--trades`.

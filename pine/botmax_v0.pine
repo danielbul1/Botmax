@@ -140,6 +140,14 @@ var float stopPx  = na
 var float tpPx    = na
 var int   orderBar = na
 
+// Setup funnel counters (diagnostics: where do setups drop out?)
+var int nTakenKZ = 0
+var int nSweep   = 0
+var int nReclaim = 0
+var int nMss     = 0
+var int nOrder   = 0
+var int nFill    = 0
+
 int bias = biasMode == BiasMode.tsmom ? (dClose1 > dCloseN ? 1 : -1) : 0
 bool flat = strategy.position_size == 0
 bool sweepEvt = false
@@ -151,6 +159,8 @@ for lv in levels
         bool taken = lv.isHigh ? high > lv.price : low < lv.price
         if taken
             lv.active := false
+            if inKZ
+                nTakenKZ += 1
             int d = lv.isHigh ? -1 : 1
             if st == 0 and flat and inKZ and tradesToday < maxTrades and (bias == 0 or bias == d)
                 st := 1, dir := d, lvlPx := lv.price, lvlName := lv.name
@@ -158,6 +168,7 @@ for lv in levels
                 sweepBar := bar_index
                 fvgBar := na
                 sweepEvt := true
+                nSweep += 1
 
 if st == 1 or st == 2
     ext := dir == -1 ? math.max(ext, high) : math.min(ext, low)
@@ -175,6 +186,7 @@ if st == 1
     bool reclaimed = dir == -1 ? close < lvlPx : close > lvlPx
     if reclaimed
         st := 2
+        nReclaim += 1
     else if bar_index - sweepBar >= reclaimBars
         st := 0   // accepted beyond the level: breakout, not a sweep
 
@@ -182,6 +194,7 @@ if st == 2
     bool mss = dir == -1 ? (not na(lastPL) and close < lastPL) : (not na(lastPH) and close > lastPH)
     if mss and not na(fvgBar)
         mssEvt := true
+        nMss += 1
         float buf = stopBuf * syminfo.mintick
         stopPx := math.round_to_mintick(dir == -1 ? ext + buf : ext - buf)
         entryPx := switch entryMode
@@ -193,6 +206,7 @@ if st == 2
         if validSide and risk > 0 and risk <= maxStopAtr * atr
             tpPx := math.round_to_mintick(entryPx + dir * rr * risk)
             st := 3, orderBar := bar_index
+            nOrder += 1
         else
             st := 0
     else if bar_index - sweepBar > mssWindow
@@ -217,6 +231,7 @@ if st == 3 and flat and bar_index > orderBar
 bool opened = strategy.position_size != 0 and strategy.position_size[1] == 0
 if opened
     tradesToday += 1
+    nFill += 1
     st := 0
 
 if st == 3 or not flat
@@ -240,3 +255,11 @@ plotshape(sweepEvt and dir == 1, "Sweep low", shape.xcross, location.belowbar, c
 plotshape(mssEvt and dir == -1, "MSS down", shape.triangledown, location.abovebar, color.red, size = size.small)
 plotshape(mssEvt and dir == 1, "MSS up", shape.triangleup, location.belowbar, color.green, size = size.small)
 bgcolor(inKZ ? color.new(color.yellow, 93) : na, title = "Trade window")
+
+// Funnel counters in the Data Window (readable by tools; no chart clutter)
+plot(nTakenKZ, "n levels taken in window", display = display.data_window)
+plot(nSweep,   "n sweeps",   display = display.data_window)
+plot(nReclaim, "n reclaimed", display = display.data_window)
+plot(nMss,     "n MSS+FVG",  display = display.data_window)
+plot(nOrder,   "n orders",   display = display.data_window)
+plot(nFill,    "n filled",   display = display.data_window)
