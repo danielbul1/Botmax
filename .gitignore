@@ -6,3 +6,5 @@
 __pycache__/
 backup/
 research/matrix_run.log
+data/ibkr_chunks/
+data/nq_5m_ibkr.csv
