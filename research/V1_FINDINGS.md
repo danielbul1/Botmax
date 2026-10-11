@@ -62,3 +62,22 @@ both, NQ profit came almost entirely from shorts. It matches the raw stat above 
 
 Still ~35 trades per market: a t-stat around 1.5, so promising, **not proven**. It is in
 `pine/botmax_v1.pine` as Setup = "ORB reclaim fade" for a multi-year Deep Backtest before anything else.
+
+---
+
+# Round 3 — longer check with 2.4 years of hourly bars (via tradingview-mcp's data source)
+
+atilaahmettaner/tradingview-mcp runs locally (39 tools); its backtester only offers 9 fixed indicator strategies
+on 1d/1h, so the fade can't run inside it. It did show Yahoo serves ~2 years of 1h futures bars, so
+`data/{nq,es}_1h_yahoo.csv` (2024-05-19 .. 2026-10-09) were pulled and the fade rerun in `engine_v1.py` as a
+coarse proxy: range = the 09:00-10:00 hourly bar (Yahoo hours start on :00), reclaim within 1-3 hourly bars,
+flat at 16:00 (`orb_start` param added).
+
+| | configs with PF > 1 | PF range | trades |
+|---|---|---|---|
+| NQ | 0 / 24 | 0.59 - 0.77 | 86 - 187 |
+| ES | 10 / 24 | 0.87 - 1.18 | 77 - 202 |
+
+NQ loses in every variant and in 8 of 11 quarters; ES is roughly breakeven. Not the same rules as the 5m fade
+(coarser range and reclaim), but it is a clear warning that the 5m result may belong to the Aug-Oct 2026 regime.
+The 5m fade still needs a true multi-year 5m test (TradingView Deep Backtest or IBKR data) before any use.

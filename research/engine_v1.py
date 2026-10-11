@@ -31,6 +31,7 @@ NY = ZoneInfo("America/New_York")
 class P:
     setup: str = "orb"               # orb | sweep | both | b1 | fade | p1
     # ORB
+    orb_start: str = "09:30"
     orb_end: str = "09:45"
     orb_trade_end: str = "11:30"
     orb_stop: str = "range"          # range | mid | bar
@@ -160,7 +161,7 @@ def prepare(df, p):
     df["ph"], df["pl"] = ph, pl
     df["inAsia"] = _in(tmin, "20:00", "00:00")
     df["inLondon"] = _in(tmin, "02:00", "05:00")
-    df["inORB"] = _in(tmin, "09:30", p.orb_end)
+    df["inORB"] = _in(tmin, p.orb_start, p.orb_end)
     df["orbTrade"] = _in(tmin, p.orb_end, p.orb_trade_end)
     df["inSweep"] = _in(tmin, *p.sweep_win)
     df["isFlat"] = _in(tmin, p.flat_at, "18:00")
