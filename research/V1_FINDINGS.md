@@ -148,3 +148,52 @@ v1/v2 did, but the out-of-sample edge is about a third of the in-sample one and 
 zero. ES (opposite-side target) is the stronger and steadier market (max DD ~$4-5k vs ~$15k on NQ). **Not tradeable
 yet.** Next: multi-year 5m data (IBKR download, or one month of TradingView Premium for Deep Backtesting) to get
 500+ trades and a yearly breakdown; promote only if PF stays > 1.15 on ES with a positive NQ.
+---
+
+# Round 5 — sources beyond alttrading.ai, and two TradingView tests (same 6-month RTH window)
+
+**What was searched.** alttrading.ai/pinescript lists 10 scripts (ATX Price Action, ATX ORB Sniper, Mike's ORB Signal
+Pro, Tom's Reversal, Regime Detection, Technical Analysis, Asia Fibonacci, and Lab-only B1 / P1 / S1). Only names and
+one-line blurbs are public; code needs a (free) sign-in, and B1/P1/S1 rules and results are Lab-only ("Coming soon").
+morluto/rea (REA) is a reverse-engineering MCP for binaries, apps and websites; it was **not** used to pull code from
+behind alttrading's login or paywall. The free scripts can be read legitimately by signing in.
+Public, citable work on intraday index edges:
+- Zarattini, Aziz & Barbon (2024), "Beat the Market: An Effective Intraday Momentum Strategy for SPY" (SFI WP 24-97,
+  SSRN 4824172): noise-area breakout, VWAP/band trailing stop, 2007-2024, Sharpe 1.33 net (authors' backtest).
+- Gao, Han, Li & Zhou (2018, JFE), "Market intraday momentum": first half-hour return predicts the last half-hour.
+- Zarattini & Aziz (2023), 5m ORB on QQQ: 24% hit rate, +0.13R/trade; an independent rerun on index CFDs found it
+  zero after costs.
+- No rigorous public study of the failed-breakout (reclaim) fade was found; vendor claims (60-80% breakout failure
+  rates) are unsourced.
+
+## 5a. Fade + filters (6 bars, opposite side; `research/round4_tv_grid.jsonl` baseline)
+
+| filters | ES n / PF / net | NQ n / PF / net |
+|---|---|---|
+| none | 97 / 1.46 / +$11.9k | 97 / 1.22 / +$15.6k |
+| 1h regime | 36 / **1.84** / +$7.1k | 38 / **1.58** / +$14.4k |
+| hourly colour run | 24 / 1.51 / +$3.4k | 30 / 1.27 / +$5.8k |
+| regime + colour run | 10 / 2.52 / +$3.1k | 16 / 2.02 / +$8.8k |
+| VWAP-slope playbook | 57 / 1.15 / +$2.4k | 54 / 1.25 / +$11.0k |
+
+The 1h regime filter improves PF on both markets and halves drawdown (ES $4.2k -> $2.1k, NQ $15.2k -> $6.7k) while
+keeping most of NQ's profit. ~37 trades per market is too few to trust; worth carrying into the multi-year test as the
+first candidate filter. The VWAP-slope switch (Alt's "VWAP Isn't a Line") hurts the fade.
+
+## 5b. Noise-area momentum (`pine/botmax_na.pine`, paper defaults: 14 sessions, k = 1, every 30 min from 10:00)
+
+| | k = 0.75 (15/30/60 min) | k = 1 (15/30/60 min) | k = 1.5 (15/30/60 min) |
+|---|---|---|---|
+| NQ PF | 0.94 / 1.00 / 0.98 | **1.34 / 1.33 / 1.23** | 1.04 / 0.97 / 1.29 |
+| ES PF | 0.70 / 0.73 / 0.65 | 0.68 / 0.75 / 0.75 | 0.78 / 0.94 / 0.67 |
+
+Paper defaults on NQ: 85 trades, PF 1.33, +$26.4k, max DD $20.0k. But ES loses in all 9 cells and NQ only works at
+k = 1 with losers on both sides: no plateau. Raw rows: `research/round5_na_grid.jsonl`.
+
+## Conclusion
+
+Apr-Oct 2026 was a mean-reversion regime for index futures: the reclaim fade works on both markets, momentum
+breakouts don't (ES) or only by luck of one parameter (NQ). That fits Round 3's warning in reverse: the fade's edge
+is probably regime-dependent too. The two ideas are natural complements, so the next real step is still multi-year 5m
+data (IBKR, or one month of TradingView Premium Deep Backtesting) to test (1) fade, (2) fade + 1h regime, (3) noise-area
+momentum, and (4) a regime switch between them, with a held-out final year.

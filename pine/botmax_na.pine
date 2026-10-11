@@ -1,0 +1,103 @@
+//@version=6
+// Botmax NA — Noise Area intraday momentum, after Zarattini, Aziz & Barbon (2024),
+// "Beat the Market: An Effective Intraday Momentum Strategy for S&P500 ETF (SPY)", SFI WP 24-97.
+//   Noise area: for each time of day, sigma = mean |close / day open - 1| over the last N RTH sessions.
+//   Upper = max(open, prev close) * (1 + k*sigma), lower = min(open, prev close) * (1 - k*sigma).
+//   Every M minutes from the first decision time: close above upper -> long, below lower -> short.
+//   Trailing stop (checked at the same times): upper band or RTH VWAP, whichever is tighter. Flat at 16:00.
+// 1 contract, $2.25/side, 1 tick slippage. Decisions fill on the decision bar's close.
+strategy("Botmax NA — Noise Area Momentum", shorttitle = "Botmax NA", overlay = true,
+     initial_capital = 100000, currency = currency.USD, default_qty_type = strategy.fixed, default_qty_value = 1,
+     pyramiding = 0, commission_type = strategy.commission.cash_per_contract, commission_value = 2.25,
+     slippage = 1, margin_long = 8, margin_short = 8, process_orders_on_close = true, max_bars_back = 5000)
+
+int   lookback = input.int(14, "Noise lookback (sessions)", minval = 2, maxval = 60)
+float k        = input.float(1.0, "Band multiplier", minval = 0.25, step = 0.25)
+int   every    = input.int(30, "Decision interval (minutes)", options = [5, 10, 15, 30, 60])
+int   firstDec = input.int(600, "First decision (minutes after midnight NY, 600 = 10:00)", minval = 575)
+int   lastDec  = input.int(930, "Last entry decision (930 = 15:30)", maxval = 955)
+bool  vwapStop = input.bool(true, "Use RTH VWAP in the trailing stop")
+string dirMode = input.string("Both", "Direction", options = ["Both", "Long only", "Short only"])
+
+const string TZ = "America/New_York"
+const int SLOTS = 78                                    // 5m bars in 09:30-16:00
+int openMin  = hour(time, TZ) * 60 + minute(time, TZ)
+int closeMin = openMin + timeframe.multiplier
+bool rth     = openMin >= 570 and openMin < 960
+int slot     = int((openMin - 570) / 5)
+
+var array<float> moves = array.new<float>((lookback + 1) * SLOTS, na)
+var int   dayN      = -1
+var float dayOpen   = na
+var float prevClose = na
+var float lastClose = na
+var float pv = 0.0
+var float vv = 0.0
+
+bool firstBar = rth and openMin == 570
+if firstBar
+    prevClose := lastClose
+    dayOpen   := open
+    dayN      += 1
+    pv := 0.0
+    vv := 0.0
+    int row0 = dayN % (lookback + 1)
+    for s = 0 to SLOTS - 1
+        moves.set(row0 * SLOTS + s, na)
+
+float upper = na
+float lower = na
+float vwap  = na
+if rth and dayN >= 0 and timeframe.multiplier == 5
+    pv += hlc3 * volume
+    vv += volume
+    vwap := vv > 0 ? pv / vv : close
+    int row = dayN % (lookback + 1)
+    // sigma for this slot from the previous `lookback` sessions (current row excluded)
+    float sum = 0.0
+    int   cnt = 0
+    for r = 0 to lookback
+        if r != row
+            float m = moves.get(r * SLOTS + slot)
+            if not na(m)
+                sum += m
+                cnt += 1
+    float sigma = cnt == lookback ? sum / cnt : na
+    moves.set(row * SLOTS + slot, math.abs(close / dayOpen - 1))
+    if not na(sigma) and not na(prevClose)
+        upper := math.max(dayOpen, prevClose) * (1 + k * sigma)
+        lower := math.min(dayOpen, prevClose) * (1 - k * sigma)
+if rth
+    lastClose := close
+
+bool decision = rth and closeMin >= firstDec and closeMin % every == 0
+bool canLong  = dirMode != "Short only"
+bool canShort = dirMode != "Long only"
+
+if decision and not na(upper)
+    float longStop  = vwapStop ? math.max(upper, vwap) : upper
+    float shortStop = vwapStop ? math.min(lower, vwap) : lower
+    if strategy.position_size > 0 and close < longStop
+        strategy.close("L", comment = "trail")
+    if strategy.position_size < 0 and close > shortStop
+        strategy.close("S", comment = "trail")
+    if closeMin <= lastDec
+        if close > upper and canLong and strategy.position_size <= 0
+            strategy.entry("L", strategy.long)
+        else if close < lower and canShort and strategy.position_size >= 0
+            strategy.entry("S", strategy.short)
+
+if rth and closeMin >= 960
+    strategy.close_all(comment = "EOD")
+
+var int nDec = 0
+var int nOut = 0
+if decision and not na(upper)
+    nDec += 1
+    if close > upper or close < lower
+        nOut += 1
+plot(nDec, "n decisions", display = display.data_window)
+plot(nOut, "n outside band", display = display.data_window)
+plot(upper, "Upper", color.new(color.teal, 0), style = plot.style_linebr)
+plot(lower, "Lower", color.new(color.red, 0), style = plot.style_linebr)
+plot(rth ? vwap : na, "VWAP", color.new(color.orange, 30), style = plot.style_linebr)
