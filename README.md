@@ -9,6 +9,11 @@ Research-driven Pine Script algo for NQ futures, built by Claude + Jev (TypeSafe
 - `research/graph.json` — the resulting knowledge graph.
 - `research/cache/` — cached Jev answers (reruns are free for unchanged questions).
 - `pine/botmax_v0.pine` — first strategy: liquidity sweep -> MSS + FVG reversal (NQ 5m, NY killzone).
+- `pine/botmax_v1.pine` — alttrading.ai free-library concepts rebuilt clean as switchable modules
+  (ORB, sweep -> BOS -> fib retrace; filters: 1h regime, hourly colour run, RTH VWAP, daily momentum).
+- `research/engine_v1.py` — Python twin of v1 (same fill model as `engine.py`); `research/search_v1.py` grid
+  (IS = first 65%, OOS = rest, NQ + ES) -> `research/search_v1_results.csv`. Findings: `research/V1_FINDINGS.md`.
+- `tools/yahoo_download.py` — free ~60 days of 5m NQ/ES from Yahoo into `data/`.
 
 ## Setup
 ```

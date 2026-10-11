@@ -1,0 +1,324 @@
+//@version=6
+// Botmax v1 — Alt Trading concepts, rebuilt clean (NQ/ES, 5m)
+// Every idea from the alttrading.ai free PineScript library, as switchable modules, without their bugs:
+//   ORB      — ATX ORB Sniper / Mike's ORB / B1 description: 5m close crosses the 09:30-x NY range.
+//   SWEEP    — TX Price Action / Asia Fibonacci: session level taken -> close-based break of the last
+//              confirmed swing the other way -> limit at a fib retracement of the sweep leg.
+//   Filters  — Regime Detection (1h SMA fast/slow + slope), Tom's hourly colour run, RTH VWAP side,
+//              daily time-series momentum. All HTF data is [1] + lookahead_on (completed bars only).
+// Fixed vs the originals: no lookahead_on without [1] (Tom's), close-based breaks (not wicks), alerts
+// only on executed logic, symmetric regime slope test, CME day boundary, real strategy() with costs.
+// Python twin for research: research/engine_v1.py (same rules, same TradingView fill model).
+// Build rules: research/PLAYBOOK.md.
+strategy("Botmax v1 — Alt Concepts Clean", shorttitle = "Botmax v1", overlay = true,
+     initial_capital       = 100000,
+     currency              = currency.USD,
+     default_qty_type      = strategy.fixed,
+     default_qty_value     = 1,
+     pyramiding            = 1,
+     commission_type       = strategy.commission.cash_per_contract,
+     commission_value      = 2.25,
+     slippage              = 1,
+     margin_long           = 8,
+     margin_short          = 8,
+     use_bar_magnifier     = false,
+     backtest_fill_limits_assumption = 1,
+     process_orders_on_close = false,
+     calc_on_every_tick    = false,
+     max_labels_count      = 300,
+     max_bars_back         = 2000)
+
+// ───────── inputs ─────────
+enum Setup
+    orb   = "ORB"
+    sweep = "Sweep -> BOS -> fib"
+    both  = "Both"
+
+enum OrbStop
+    range = "Opposite side of range"
+    mid   = "Middle of range"
+    bar   = "Breakout bar extreme"
+
+enum OrbEntry
+    market = "Market on next bar"
+    retest = "Limit at range edge (retest)"
+
+const string TZ = "America/New_York"
+const string G_M = "Module"
+Setup setup = input.enum(Setup.orb, "Setup", group = G_M)
+
+const string G_O = "ORB"
+string orbSess   = input.session("0930-0945", "Opening range", group = G_O)
+string orbTrade  = input.session("0945-1130", "Breakout window", group = G_O)
+OrbStop orbStop  = input.enum(OrbStop.range, "Stop", group = G_O)
+OrbEntry orbEntry = input.enum(OrbEntry.market, "Entry", group = G_O)
+
+const string G_S = "Sweep"
+string sweepSess = input.session("0830-1100", "Sweep window", group = G_S)
+bool useAsia     = input.bool(true, "Asia high/low (20:00-00:00)", group = G_S)
+bool useLondon   = input.bool(true, "London high/low (02:00-05:00)", group = G_S)
+bool usePD       = input.bool(true, "Previous day high/low", group = G_S)
+int   piv        = input.int(1, "Swing half-width (1 = 3-bar fractal)", minval = 1, group = G_S)
+int   mssWindow  = input.int(12, "Bars allowed for BOS after sweep", minval = 2, group = G_S)
+float fib        = input.float(0.5, "Entry retracement of sweep leg", minval = 0.1, maxval = 0.9, step = 0.05, group = G_S)
+int   entryWait  = input.int(8, "Cancel unfilled limit after (bars)", minval = 1, group = G_S)
+
+const string G_R = "Risk"
+int   stopBuf    = input.int(4, "Stop buffer (ticks)", minval = 0, group = G_R)
+float rr         = input.float(2.0, "Target (R multiple)", minval = 0.5, step = 0.25, group = G_R)
+float maxStopAtr = input.float(4.0, "Skip if stop > x ATR", minval = 0.5, step = 0.5, group = G_R)
+float minStopAtr = input.float(0.3, "Skip if stop < x ATR", minval = 0, step = 0.1, group = G_R)
+int   maxTrades  = input.int(2, "Max trades per day", minval = 1, group = G_R)
+string flatSess  = input.session("1555-1800", "Flat / no orders", group = G_R)
+
+const string G_F = "Filters (direction gates)"
+bool useRegime = input.bool(false, "1h regime (SMA fast > slow and rising)", group = G_F)
+int  regFast   = input.int(13, "Regime fast SMA (1h)", minval = 2, group = G_F)
+int  regSlow   = input.int(34, "Regime slow SMA (1h)", minval = 3, group = G_F)
+bool useHbias  = input.bool(false, "Hourly colour run >= 2 (Tom's bias)", group = G_F)
+bool useVwap   = input.bool(false, "Price on the trade side of RTH VWAP", group = G_F)
+int  tsLen     = input.int(0, "Daily momentum lookback (0 = off)", minval = 0, group = G_F)
+
+// ───────── global series (every ta.* / request.* unconditionally) ─────────
+float atr = ta.rma(ta.tr(true), 14)
+inSess(s) => not na(time(timeframe.period, s, TZ))
+bool inAsia   = inSess("2000-0000")
+bool inLondon = inSess("0200-0500")
+bool inORB    = inSess(orbSess)
+bool orbWin   = inSess(orbTrade)
+bool inSweep  = inSess(sweepSess)
+bool isFlat   = inSess(flatSess)
+bool inRTH    = inSess("0930-1600")
+bool newDay   = timeframe.change("D")
+
+regimeHTF() =>
+    float f = ta.sma(close, regFast)
+    float s = ta.sma(close, regSlow)
+    int r = f > s and f > f[3] ? 1 : f < s and f < f[3] ? -1 : 0
+    r[1]                                   // last COMPLETED hour (paired with lookahead_on below)
+hbiasHTF() =>
+    int col = math.sign(close - open)
+    var int run = 0
+    run := col == col[1] ? run + 1 : 1
+    int b = run >= 2 ? col : 0
+    b[1]
+momHTF() =>
+    float m = math.sign(close - close[math.max(tsLen, 1)])
+    m[1]
+int regime = request.security(syminfo.tickerid, "60", regimeHTF(), lookahead = barmerge.lookahead_on)
+int hbias  = request.security(syminfo.tickerid, "60", hbiasHTF(), lookahead = barmerge.lookahead_on)
+float dMom = request.security(syminfo.tickerid, "D", momHTF(), lookahead = barmerge.lookahead_on)
+
+// RTH-anchored VWAP
+var float pv = 0.0
+var float vv = 0.0
+if inRTH and not inRTH[1]
+    pv := 0.0
+    vv := 0.0
+if inRTH
+    pv += hlc3 * nz(volume)
+    vv += nz(volume)
+float vwap = inRTH and vv > 0 ? pv / vv : na
+
+float ph = ta.pivothigh(high, piv, piv)
+float pl = ta.pivotlow(low, piv, piv)
+
+allowed(int d) =>
+    bool ok = true
+    if useRegime and regime != d
+        ok := false
+    if useHbias and hbias != d
+        ok := false
+    if useVwap and not na(vwap) and math.sign(close - vwap) != d
+        ok := false
+    if tsLen > 0 and dMom != d
+        ok := false
+    ok
+
+// ───────── state ─────────
+type Level
+    string name
+    bool   isHigh
+    float  price  = na
+    bool   active = false
+
+var Level asiaH = Level.new("Asia H", true)
+var Level asiaL = Level.new("Asia L", false)
+var Level lonH  = Level.new("London H", true)
+var Level lonL  = Level.new("London L", false)
+var Level pdH   = Level.new("PDH", true)
+var Level pdL   = Level.new("PDL", false)
+var array<Level> levels = array.from(pdH, pdL, asiaH, asiaL, lonH, lonL)
+
+var float dayH = na
+var float dayL = na
+var float orbH = na
+var float orbL = na
+var bool  orbLongDone  = false
+var bool  orbShortDone = false
+var int   tradesToday = 0
+var float lastPH = na
+var float lastPL = na
+// sweep state
+var int   swDir = 0
+var float swExt = na
+var float swFar = na
+var float swBos = na
+var int   swBar = na
+var string swTag = ""
+// pending order
+var int   pDir = 0
+var int   pBar = na
+var float pStop = na
+var float pTp = na
+var string pId = ""
+
+trackSession(Level hi, Level lo, bool flag, bool enabled) =>
+    if flag and not flag[1]
+        hi.price := high
+        lo.price := low
+        hi.active := false
+        lo.active := false
+    else if flag
+        hi.price := math.max(hi.price, high)
+        lo.price := math.min(lo.price, low)
+    else if flag[1] and enabled
+        hi.active := true
+        lo.active := true
+
+// ───────── state updates (bar close) ─────────
+if newDay
+    tradesToday  := 0
+    orbLongDone  := false
+    orbShortDone := false
+    orbH := na
+    orbL := na
+    swDir := 0
+    if usePD and not na(dayH)
+        pdH.price := dayH
+        pdL.price := dayL
+        pdH.active := true
+        pdL.active := true
+    dayH := high
+    dayL := low
+else
+    dayH := math.max(nz(dayH, high), high)
+    dayL := math.min(nz(dayL, low), low)
+
+trackSession(asiaH, asiaL, inAsia, useAsia)
+trackSession(lonH, lonL, inLondon, useLondon)
+if inORB
+    orbH := na(orbH) ? high : math.max(orbH, high)
+    orbL := na(orbL) ? low : math.min(orbL, low)
+if not na(ph)
+    lastPH := ph
+if not na(pl)
+    lastPL := pl
+
+bool flat     = strategy.position_size == 0
+bool canTrade = flat and pDir == 0 and tradesToday < maxTrades
+int   nDir = 0
+float nPx  = na
+float nStop = na
+bool  nLimit = false
+string nTag = ""
+
+// ───────── SIGNAL: ORB ─────────
+if (setup == Setup.orb or setup == Setup.both) and orbWin and not na(orbH)
+    bool upX = close > orbH and close[1] <= orbH and not orbLongDone
+    bool dnX = close < orbL and close[1] >= orbL and not orbShortDone
+    for d in array.from(1, -1)
+        bool x = d == 1 ? upX : dnX
+        if x
+            if d == 1
+                orbLongDone := true
+            else
+                orbShortDone := true
+            if canTrade and nDir == 0 and allowed(d)
+                float lvl = d == 1 ? orbH : orbL
+                float sl = switch orbStop
+                    OrbStop.range => d == 1 ? orbL : orbH
+                    OrbStop.mid   => (orbH + orbL) / 2
+                    OrbStop.bar   => d == 1 ? low : high
+                nDir   := d
+                nStop  := math.round_to_mintick(sl - d * stopBuf * syminfo.mintick)
+                nLimit := orbEntry == OrbEntry.retest
+                nPx    := nLimit ? lvl : close
+                nTag   := "ORB"
+
+// ───────── SIGNAL: sweep -> BOS -> fib retrace ─────────
+if setup == Setup.sweep or setup == Setup.both
+    bool newSweep = false
+    for lv in levels
+        if lv.active and not na(lv.price)
+            if lv.isHigh ? high > lv.price : low < lv.price
+                lv.active := false
+                int d = lv.isHigh ? -1 : 1
+                float bos = d == -1 ? lastPL : lastPH
+                if swDir == 0 and inSweep and canTrade and not na(bos)
+                    swDir := d
+                    swExt := d == -1 ? high : low
+                    swFar := d == -1 ? low : high
+                    swBos := bos
+                    swBar := bar_index
+                    swTag := lv.name
+                    newSweep := true
+    if swDir != 0 and not newSweep
+        int d = swDir
+        if d == 1 ? low < swExt : high > swExt
+            swExt := d == 1 ? low : high
+            float nb = d == 1 ? lastPH : lastPL
+            if not na(nb)
+                swBos := nb
+        swFar := d == 1 ? math.max(swFar, high) : math.min(swFar, low)
+        if d == 1 ? close > swBos : close < swBos
+            if canTrade and nDir == 0 and allowed(d)
+                nDir   := d
+                nPx    := math.round_to_mintick(swFar - d * fib * math.abs(swFar - swExt))
+                nStop  := math.round_to_mintick(swExt - d * stopBuf * syminfo.mintick)
+                nLimit := true
+                nTag   := "SWEEP " + swTag
+            swDir := 0
+        else if bar_index - swBar > mssWindow or not inSweep
+            swDir := 0
+
+// ───────── EXECUTION ─────────
+if nDir != 0
+    float risk = (nPx - nStop) * nDir
+    if risk >= minStopAtr * atr and risk <= maxStopAtr * atr
+        pDir  := nDir
+        pBar  := bar_index
+        pStop := nStop
+        pTp   := math.round_to_mintick(nPx + nDir * rr * risk)
+        pId   := nDir == 1 ? "L" : "S"
+        strategy.entry(pId, nDir == 1 ? strategy.long : strategy.short, limit = nLimit ? nPx : na, comment = nTag)
+        strategy.exit("x" + pId, pId, stop = pStop, limit = pTp)
+        label.new(bar_index, nDir == 1 ? low : high, nTag, style = nDir == 1 ? label.style_label_up : label.style_label_down,
+             color = nDir == 1 ? color.new(color.teal, 20) : color.new(color.red, 20), textcolor = color.white, size = size.tiny)
+
+if pDir != 0 and flat and bar_index > pBar
+    bool ran  = pDir == 1 ? high >= pTp : low <= pTp
+    bool dead = pDir == 1 ? low <= pStop : high >= pStop
+    if bar_index - pBar >= entryWait or ran or dead or isFlat
+        strategy.cancel(pId)
+        pDir := 0
+
+if strategy.position_size != 0 and nz(strategy.position_size[1]) == 0
+    tradesToday += 1
+    pDir := 0
+
+if isFlat
+    strategy.cancel_all()
+    pDir := 0
+    strategy.close_all(comment = "EOD")
+
+// ───────── visuals ─────────
+plot(orbWin or inORB ? orbH : na, "ORB high", color.new(color.orange, 0), style = plot.style_linebr)
+plot(orbWin or inORB ? orbL : na, "ORB low", color.new(color.orange, 0), style = plot.style_linebr)
+plot(vwap, "RTH VWAP", color.new(color.purple, 40), style = plot.style_linebr)
+bgcolor(useRegime ? (regime == 1 ? color.new(color.green, 92) : regime == -1 ? color.new(color.red, 92) : na) : na)
+plot(regime, "regime", display = display.data_window)
+plot(hbias, "hourly bias", display = display.data_window)
+
+alertcondition(nDir == 1 and pDir == 1 and pBar == bar_index, "Botmax v1 long", "Botmax v1 long order placed")
+alertcondition(nDir == -1 and pDir == -1 and pBar == bar_index, "Botmax v1 short", "Botmax v1 short order placed")
