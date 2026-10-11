@@ -38,7 +38,7 @@ enum Setup
     fade  = "ORB reclaim fade"
 
 enum OrbStop
-    range = "Opposite side of range"
+    opp   = "Opposite side of range"
     mid   = "Middle of range"
     bar   = "Breakout bar extreme"
 
@@ -53,7 +53,7 @@ Setup setup = input.enum(Setup.orb, "Setup", group = G_M)
 const string G_O = "ORB"
 string orbSess   = input.session("0930-0945", "Opening range", group = G_O)
 string orbTrade  = input.session("0945-1130", "Breakout window", group = G_O)
-OrbStop orbStop  = input.enum(OrbStop.range, "Stop", group = G_O)
+OrbStop orbStop  = input.enum(OrbStop.opp, "Stop", group = G_O)
 OrbEntry orbEntry = input.enum(OrbEntry.market, "Entry", group = G_O)
 
 const string G_FD = "ORB reclaim fade"
@@ -107,7 +107,7 @@ regimeHTF() =>
     int r = f > s and f > f[3] ? 1 : f < s and f < f[3] ? -1 : 0
     r[1]                                   // last COMPLETED hour (paired with lookahead_on below)
 hbiasHTF() =>
-    int col = math.sign(close - open)
+    int col = int(math.sign(close - open))
     var int run = 0
     run := col == col[1] ? run + 1 : 1
     int b = run >= 2 ? col : 0
@@ -204,6 +204,7 @@ trackSession(Level hi, Level lo, bool flag, bool enabled) =>
     else if flag[1] and enabled
         hi.active := true
         lo.active := true
+    true
 
 // ───────── state updates (bar close) ─────────
 if newDay
@@ -259,7 +260,7 @@ if (setup == Setup.orb or setup == Setup.both) and orbWin and not na(orbH)
             if canTrade and nDir == 0 and allowed(d)
                 float lvl = d == 1 ? orbH : orbL
                 float sl = switch orbStop
-                    OrbStop.range => d == 1 ? orbL : orbH
+                    OrbStop.opp => d == 1 ? orbL : orbH
                     OrbStop.mid   => (orbH + orbL) / 2
                     OrbStop.bar   => d == 1 ? low : high
                 nDir   := d

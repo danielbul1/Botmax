@@ -81,3 +81,70 @@ flat at 16:00 (`orb_start` param added).
 NQ loses in every variant and in 8 of 11 quarters; ES is roughly breakeven. Not the same rules as the 5m fade
 (coarser range and reclaim), but it is a clear warning that the 5m result may belong to the Aug-Oct 2026 regime.
 The 5m fade still needs a true multi-year 5m test (TradingView Deep Backtest or IBKR data) before any use.
+
+---
+
+# Round 4 — TradingView (CME_MINI NQ1! / ES1!, 5m, RTH bars, 2026-04-13 .. 2026-10-09)
+
+Run through tradingview-mcp (tradesdontlie) + `tools/bt.mjs` on TradingView Desktop 3.4.1. `pine/botmax_v1.pine`
+needed three Pine v6 compile fixes first (enum field `range` is reserved -> `opp`; `int(math.sign())` cast; typed return
+for `trackSession`). Setup = "ORB reclaim fade", range 09:30-09:45, "Breakout window" 0945-1300 (= Round 2's
+"trades until 13:00"), stop buffer 4 ticks, max 2 trades/day, no filters, 1 contract, $2.25/side, 1 tick slippage.
+
+**History:** Deep Backtesting needs a Premium plan (the account is Essential), so the test runs on the bars loaded on
+the chart (~10k). With the session set to RTH only, that is 6 months (Apr 13 - Oct 9 2026) instead of 7 weeks with ETH.
+The fade trades only inside RTH, so RTH bars don't change its signals.
+
+## Grid (full 6 months)
+
+| market | reclaim bars | target | trades | win % | PF | net | max DD |
+|---|---|---|---|---|---|---|---|
+| NQ | 3 | opposite | 84 | 44% | 1.11 | +$6,947 | $15,998 |
+| NQ | 3 | mid | 81 | 65% | 1.28 | +$9,721 | $8,953 |
+| NQ | **6** | **opposite** | 97 | 47% | 1.22 | +$15,624 | $15,188 |
+| NQ | 6 | mid | 93 | 67% | 1.24 | +$10,322 | $13,378 |
+| NQ | 12 | opposite | 110 | 46% | 1.20 | +$16,375 | $16,172 |
+| NQ | 12 | mid | 106 | 67% | 1.28 | +$13,673 | $13,378 |
+| ES | 3 | opposite | 82 | 52% | 1.39 | +$8,331 | $4,097 |
+| ES | 3 | mid | 76 | 68% | 1.13 | +$1,621 | $2,738 |
+| ES | **6** | **opposite** | 97 | 55% | 1.46 | +$11,864 | $4,195 |
+| ES | 6 | mid | 91 | 70% | 1.17 | +$2,566 | $5,353 |
+| ES | 12 | opposite | 113 | 56% | 1.51 | +$15,054 | $4,750 |
+| ES | 12 | mid | 106 | 71% | 1.23 | +$4,036 | $6,317 |
+
+All 12 cells are profitable: a plateau, not one lucky cell. ES prefers the opposite-side target; NQ is indifferent.
+Raw rows: `research/round4_tv_grid.jsonl`.
+
+## Default config (6 bars, opposite side) split by period
+
+| | trades | win % | PF | net | t-stat |
+|---|---|---|---|---|---|
+| NQ Aug 2 - Oct 9 (Round 2 window) | 35 | 49% | 1.60 | +$9,843 | 1.21 |
+| NQ Apr 13 - Aug 1 (**new, unseen**) | 62 | 47% | **1.10** | +$5,781 | 0.35 |
+| ES Aug 2 - Oct 9 (Round 2 window) | 38 | 63% | 2.28 | +$7,642 | 2.31 |
+| ES Apr 13 - Aug 1 (**new, unseen**) | 59 | 49% | **1.21** | +$4,222 | 0.65 |
+| NQ full 6 months | 97 | 47% | 1.22 | +$15,624 | 0.85 |
+| ES full 6 months | 97 | 55% | 1.46 | +$11,864 | 1.62 |
+
+Monthly net, NQ: Apr -3.3k, May +1.6k, Jun +6.6k, Jul +0.9k, Aug +6.4k, Sep +7.3k, Oct -3.9k.
+ES: Apr -0.1k, May +1.5k, Jun +3.4k, Jul -0.6k, Aug +2.4k, Sep +5.7k, Oct -0.4k.
+NQ longs/shorts both positive this time (PF 1.18 / 1.26), so Round 2's "NQ profit came only from shorts" doesn't hold.
+
+## Comparison with Round 2
+
+**Parity is good.** On the overlapping window TradingView matches the Python engine almost trade-for-trade:
+NQ 35 vs 34 trades, PF 1.60 vs 1.66, net $9,843 vs $10,467; ES 38 vs 38 trades, PF 2.28 vs 2.32, net $7,642 vs $7,879.
+So `engine_v1.py` is a faithful twin of the Pine, and Round 2's numbers were not an engine artefact.
+
+**On the 3.5 months Round 2 never saw, the edge shrinks a lot but stays positive:** PF 1.10 on NQ and 1.21 on ES,
+t-stats 0.35 and 0.65. That is consistent with a small real edge **or** with zero; it is not consistent with the
+PF 1.7-2.3 that the Aug-Oct window suggested. Round 3's hourly proxy (NQ negative over 2.4 years) still stands as the
+warning: six months is still one market regime.
+
+## Conclusion
+
+The fade survives its first out-of-sample test on both markets and across all 6 grid cells, which nothing else in
+v1/v2 did, but the out-of-sample edge is about a third of the in-sample one and statistically indistinguishable from
+zero. ES (opposite-side target) is the stronger and steadier market (max DD ~$4-5k vs ~$15k on NQ). **Not tradeable
+yet.** Next: multi-year 5m data (IBKR download, or one month of TradingView Premium for Deep Backtesting) to get
+500+ trades and a yearly breakdown; promote only if PF stays > 1.15 on ES with a positive NQ.
