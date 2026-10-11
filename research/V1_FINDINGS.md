@@ -197,3 +197,67 @@ breakouts don't (ES) or only by luck of one parameter (NQ). That fits Round 3's 
 is probably regime-dependent too. The two ideas are natural complements, so the next real step is still multi-year 5m
 data (IBKR, or one month of TradingView Premium Deep Backtesting) to test (1) fade, (2) fade + 1h regime, (3) noise-area
 momentum, and (4) a regime switch between them, with a held-out final year.
+---
+
+# Round 6 — 15 years of real 5m futures data: the first validated edge
+
+**Data.** Every quarterly NQ and ES contract since 2011 (128 contracts, expired ones included), pulled from
+TradingView on the Essential plan (`tools/tv_contracts.mjs`), RTH 5m bars, rolled 8 days before expiry and
+back-adjusted (`tools/stitch_contracts.py`): 321k bars per market, 2010-12 -> 2026-10-09, no gaps. Checked against
+TradingView's own NQ1!: 95% of bars have identical ranges, the rest sit in roll windows (NQ1! rolls on another day).
+Not committed (TradingView data is not redistributable); rebuild with the two tools.
+
+**Method** (`research/wf.py`, `research/ROADMAP.md`): locked periods DISCOVERY 2011-2019 / VALIDATION 2020-2022 /
+HOLDOUT 2023-2026, 45 configs on discovery only, then only the survivors forward; holdout opened once, with the
+decision config declared beforehand. Costs: 1 tick slippage per fill + $2.25/side; stress test at 2x.
+
+## Stage 1 — discovery 2011-2019 (45 configs; full tables `research/round6_disc_nq.csv`, `round6_disc_es.csv`)
+
+| edge | NQ best / typical PF | ES best / typical PF | verdict |
+|---|---|---|---|
+| A ORB reclaim fade | 0.97 / 0.79-0.94 (2/9 years) | 0.73 / 0.57-0.70 (0/9 years) | **dead**: the 2026 result was a regime |
+| A2 fade + 1h regime | 1.11 / 0.85-1.11 | 0.87 / 0.65-0.87 | dead |
+| B noise-area momentum | **1.33 / 1.14-1.33** for k >= 1 (plateau) | 1.11 / 0.84-1.11 | NQ plateau, ES only at k = 1.5 |
+| C last-half-hour momentum | 0.86 / 0.79-0.86 | 0.84 / 0.66-0.84 | dead (decayed since 2018 publication) |
+| D overnight gap fade / go | 1.10 / 0.87-1.10 | 1.00 / 0.73-1.00 | dead |
+
+No config cleared the strict "PF > 1.15 on both markets" gate. B was promoted as an NQ-led candidate (declared before
+validation): k in {1.0, 1.5} x decision interval in {30, 60} min.
+
+## Stage 2 — validation 2020-2022 (`round6_val.csv`)
+
+| config | NQ PF / Sharpe | ES PF / Sharpe | PF at 2x costs NQ / ES |
+|---|---|---|---|
+| k1.0 e30 (paper defaults) | 1.28 / 1.30 | 1.20 / 0.96 | 1.24 / 1.11 |
+| k1.0 e60 | 1.43 / 1.64 | 1.22 / 0.96 | 1.39 / 1.14 |
+| k1.5 e30 | 1.33 / 1.11 | 1.16 / 0.62 | 1.29 / 1.07 |
+| k1.5 e60 | 1.23 / 0.74 | 1.22 / 0.70 | 1.20 / 1.13 |
+
+All 4 pass on both markets; every NQ year positive.
+
+## Stage 3 — holdout 2023-2026, opened once (`round6_hold.csv`). Decision config: paper defaults k1.0 e30
+
+| | trades | PF | Sharpe | per year | PF 2x costs |
+|---|---|---|---|---|---|
+| **NQ** | 845 | **1.27** | **1.11** | 2023 +38.9k, 2024 +36.2k, 2025 +37.7k, 2026 +22.4k | 1.24 |
+| ES | 898 | 0.98 | -0.08 | +15.4k, +3.7k, +0.4k, -24.0k | 0.90 |
+
+The other three configs: NQ PF 1.16-1.28 (all positive), ES PF 0.98-1.06.
+
+## Full history, NQ, paper defaults (2011-01 .. 2026-10)
+
+- 1 contract: 3,682 trades, PF 1.26, net +$283,766, max DD $41,642, 13/16 years positive
+  (weak years: 2013 -1.1k, 2016 -2.5k, 2019 -0.9k: calm, grinding markets).
+- Volatility-targeted ($1,000 daily-vol target, trailing 60 days, past data only): **Sharpe 0.96 over 15.8 years**
+  (t ~ 3.8), ~$16k/year, max DD $20.4k.
+- Adding ES (same rule) hurts: ES Sharpe 0.05, correlation 0.69 with NQ, combined Sharpe 0.55. ES is dropped.
+- Python vs TradingView parity for this rule (`pine/botmax_na.pine`, Apr-Oct 2026): 90 vs 85 trades, PF 1.28 vs 1.33.
+
+## Conclusion
+
+**Botmax has its first edge that survives a strict, pre-registered test: noise-area intraday momentum on NQ,
+Sharpe ~1 net over 16 years, positive in all three locked periods.** That is the "real single edge" tier in
+`ROADMAP.md`. Everything from the alttrading.ai library (ORB, sweep, fade, filters) is dead on 15 years of data.
+The road to the 1.5-2.5 portfolio tier is now diversification: the same rule on markets that are **not** US equity
+indices (crude, gold, treasuries, FX futures: intraday momentum is documented across asset classes), each run through
+the same three-stage gate, then combined with volatility targeting.

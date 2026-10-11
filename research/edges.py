@@ -115,3 +115,51 @@ def run_lhh(df, p=LHH(), point_value=20.0):
         if len(ext):
             prev_close = ext["close"].iloc[0]
     return trades
+
+
+@dataclass
+class GAP:
+    """Overnight gap fade: at the 09:30 open, if prev RTH close -> open gap is between g_min and g_max daily ATRs,
+    trade toward the previous close (gap fill = target), stop at stop_atr daily ATRs beyond the open, flat 16:00.
+    mode = 1 fades the gap, -1 trades with it (continuation, target = 2x gap)."""
+    g_min: float = 0.1
+    g_max: float = 1.0
+    stop_atr: float = 0.5
+    mode: int = 1
+    commission: float = 2.25
+    slippage_ticks: int = 1
+
+
+def run_gap(df, p=GAP(), point_value=20.0):
+    df = _rth(df)
+    trades, prev_close, ranges = [], None, []
+    for day, g in df.groupby("day", sort=True):
+        g = g.reset_index(drop=True)
+        full = g["cm"].iloc[0] == 575 and len(g) >= 60
+        if full and prev_close is not None and len(ranges) >= 14:
+            atr = float(np.mean(ranges[-14:]))
+            o = g["open"].iloc[0]
+            gap = (o - prev_close) / atr
+            if p.g_min <= abs(gap) <= p.g_max:
+                d = -int(np.sign(gap)) * p.mode
+                tgt = prev_close if p.mode == 1 else o + d * abs(o - prev_close) * 2
+                stp = o - d * p.stop_atr * atr
+                px_in, t_in = o, g["time"].iloc[0]
+                out = None
+                for _, b in g.iterrows():
+                    if b["cm"] > 960:
+                        break
+                    if (b["low"] <= stp) if d == 1 else (b["high"] >= stp):
+                        out = (b["time"], stp); break
+                    if (b["high"] >= tgt) if d == 1 else (b["low"] <= tgt):
+                        out = (b["time"], tgt); break
+                    last = b
+                if out is None:
+                    out = (last["time"], last["close"])
+                _trade(trades, d, t_in, px_in, out[0], out[1], p, point_value)
+        if full:
+            ranges.append(g["high"].max() - g["low"].min())
+        rth_end = g[g["cm"] <= 960]
+        if len(rth_end):
+            prev_close = rth_end["close"].iloc[-1]
+    return trades

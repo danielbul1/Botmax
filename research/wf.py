@@ -81,7 +81,8 @@ def evaluate(p, root, period="DISC", cost_mult=1.0):
         trades = v.run(df, p, point_value=PV[root]).trades
     else:                                                  # edges.NA / edges.LHH
         import edges
-        trades = (edges.run_na if isinstance(p, edges.NA) else edges.run_lhh)(df, p, point_value=PV[root])
+        fn = {edges.NA: edges.run_na, edges.LHH: edges.run_lhh, edges.GAP: edges.run_gap}[type(p)]
+        trades = fn(df, p, point_value=PV[root])
     st = v.stats(trades)
     days = pd.to_datetime(df["time"], unit="s", utc=True).dt.tz_convert("America/New_York").dt.date.nunique()
     dp = daily_pnl(trades)
@@ -111,4 +112,5 @@ def grid_report(configs, roots=("NQ", "ES"), period="DISC"):
         srs = out[f"{r}_sr"].tolist()
         out[f"{r}_dsr"] = [round(deflated_sharpe(s, d, len(srs), srs), 3) for s, d in zip(srs, out[f"{r}_days"])]
     return out
+
 

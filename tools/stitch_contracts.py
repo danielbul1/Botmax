@@ -30,7 +30,7 @@ def main(root):
     segs, prev_roll = [], None
     for k, df in enumerate(cons):
         roll = df["time"].iloc[-1] - ROLL_DAYS * 86400
-        lo = prev_roll if prev_roll is not None else df["time"].iloc[0] - 1
+        lo = prev_roll if prev_roll is not None else roll - 91 * 86400   # first contract: its own front quarter only
         seg = df[(df["time"] > lo) & (df["time"] <= roll)].copy() if k < len(cons) - 1 else df[df["time"] > lo].copy()
         segs.append(seg)
         prev_roll = roll
