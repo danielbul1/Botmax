@@ -61,6 +61,12 @@ under ~1 year of expected profit.** Stretch: 2.0+.
 A (mean reversion) and B (momentum) are naturally negatively correlated: Apr-Oct 2026 showed exactly that
 (fade won, momentum lost on ES). That pairing is the most promising portfolio core.
 
+## 5a. Status (Round 7, NQ / ES only)
+
+Searched further on NQ/ES only: vol-regime filter, ES confirmation, parameter ensemble, overnight hold, turn of the
+month, NQ-ES spread. None beats or diversifies the base rule out of sample. Ceiling with NQ/ES on 5m bars:
+**Sharpe ~1.0 (1-tick fills) to ~1.2 (perfect fills)**, one edge. Next gains: execution quality, then other markets.
+
 ## 5. Status (Round 6)
 
 Stages 0-3 done for A-D. One survivor: **B on NQ**. Current level: real single edge, Sharpe ~1.

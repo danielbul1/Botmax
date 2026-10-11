@@ -1,4 +1,4 @@
-﻿"""Honest evaluation harness for Botmax candidates on the stitched multi-year 5m futures data.
+"""Honest evaluation harness for Botmax candidates on the stitched multi-year 5m futures data.
 
 Periods are fixed and must not be moved after seeing results:
   DISCOVERY  2011-01-01 .. 2019-12-31   free to search
@@ -21,7 +21,8 @@ import pandas as pd
 import engine_v1 as v
 
 ROOT = Path(__file__).resolve().parent.parent
-PV = {"NQ": 20.0, "ES": 50.0}
+PV = {"NQ": 20.0, "ES": 50.0, "ZN": 1000.0, "6E": 125000.0, "GC": 100.0, "CL": 1000.0}
+TICKS = {"NQ": 0.25, "ES": 0.25, "ZN": 1 / 64, "6E": 0.00005, "GC": 0.1, "CL": 0.01}
 PERIODS = {"DISC": ("2011-01-01", "2019-12-31"), "VAL": ("2020-01-01", "2022-12-31"), "HOLD": ("2023-01-01", "2100-01-01")}
 N = NormalDist()
 _DATA = {}
@@ -81,8 +82,14 @@ def evaluate(p, root, period="DISC", cost_mult=1.0):
         trades = v.run(df, p, point_value=PV[root]).trades
     else:                                                  # edges.NA / edges.LHH
         import edges
-        fn = {edges.NA: edges.run_na, edges.LHH: edges.run_lhh, edges.GAP: edges.run_gap}[type(p)]
-        trades = fn(df, p, point_value=PV[root])
+        p = replace(p, tick=TICKS[root])
+        fn = {edges.NA: edges.run_na, edges.LHH: edges.run_lhh, edges.GAP: edges.run_gap, edges.ON: edges.run_on, edges.TOM: edges.run_tom}[type(p)]
+        if isinstance(p, edges.NA) and p.confirm:
+            st_other = {}
+            edges.run_na(slice_period(data(p.confirm), period), replace(p, confirm=""), PV[p.confirm], states=st_other)
+            trades = edges.run_na(df, p, PV[root], confirm=st_other)
+        else:
+            trades = fn(df, p, point_value=PV[root])
     st = v.stats(trades)
     days = pd.to_datetime(df["time"], unit="s", utc=True).dt.tz_convert("America/New_York").dt.date.nunique()
     dp = daily_pnl(trades)

@@ -1,7 +1,7 @@
 // Download quarterly futures contracts (expired included) from the open TradingView chart, 5m bars,
 // one CSV per contract in data/tv_contracts/<ROOT><M><YYYY>.csv. Resumes: existing files are skipped.
 // The chart's session setting is used as is (set it to RTH first for RTH-only research).
-// Usage: node tools/tv_contracts.mjs NQ 2011 2026 [CME_MINI]
+// Usage: node tools/tv_contracts.mjs NQ 2011 2026 [CME_MINI] [HMUZ]   (last arg: contract month codes)
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
@@ -9,7 +9,7 @@ const TV_MCP = process.env.TV_MCP_DIR || 'C:/Users/user/Model/tools/tradingview-
 const chart = await import(pathToFileURL(`${TV_MCP}/src/core/chart.js`).href);
 const { evaluate } = await import(pathToFileURL(`${TV_MCP}/src/connection.js`).href);
 
-const [root, y0, y1, exch = 'CME_MINI'] = process.argv.slice(2);
+const [root, y0, y1, exch = 'CME_MINI', months = 'HMUZ'] = process.argv.slice(2);
 const OUT = 'data/tv_contracts';
 mkdirSync(OUT, { recursive: true });
 const MS = `window.TradingViewApi._activeChartWidgetWV.value()._chartWidget.model().mainSeries()`;
@@ -27,7 +27,7 @@ async function loadAll() {
 }
 
 for (let y = Number(y0); y <= Number(y1); y++) {
-  for (const m of ['H', 'M', 'U', 'Z']) {
+  for (const m of months) {
     const name = `${root}${m}${y}`;
     const file = `${OUT}/${name}.csv`;
     if (existsSync(file)) continue;

@@ -261,3 +261,46 @@ Sharpe ~1 net over 16 years, positive in all three locked periods.** That is the
 The road to the 1.5-2.5 portfolio tier is now diversification: the same rule on markets that are **not** US equity
 indices (crude, gold, treasuries, FX futures: intraday momentum is documented across asset classes), each run through
 the same three-stage gate, then combined with volatility targeting.
+---
+
+# Round 7 — pushing NQ / ES only: what else is there? (same locked periods, raw-price simulator)
+
+Correction to Round 6: the noise-area bands are percentages, so `research/edges.py` now computes them on raw contract
+prices (the stitched file stores the back-adjustment per bar in `adj`). Paper defaults on NQ become
+DISC PF 1.21 / Sharpe 0.80, VAL 1.24 / 1.15, HOLD 1.26 / 1.06 (vs 1.21 / 1.28 / 1.27 before); full 2011-2026
+vol-targeted Sharpe 0.96. Conclusions unchanged.
+
+| idea (all searched on 2011-2019 only) | result | verdict |
+|---|---|---|
+| B + volatility-regime filter (skip calmest 25% / 50% of regimes) | DISC Sharpe 0.80 -> 0.99 / 1.00; VAL 1.03 / **1.35**; HOLD (decision q0.5, declared in advance) PF 1.24, Sharpe **0.68** vs base 1.06 | passes, but **worse than the base out of sample**: not adopted |
+| B on NQ, entries confirmed by ES breaking its band too | DISC Sharpe 0.80 -> 0.59 | dead |
+| B parameter ensemble (k 1/1.5 x 30/60 min), vol-targeted | pairwise corr 0.8; Sharpe DISC 0.65, VAL 1.22, HOLD 1.04, all 0.88 (base 0.96) | no gain |
+| Overnight hold (16:00 close -> 09:30 open) | NQ DISC PF 1.14 / Sharpe 0.67; VAL PF 1.05, 2022 -$70k | dead (long beta; ES premium eaten by costs) |
+| Turn of the month (long day -k .. +m) | NQ PF 1.06-1.48 depending on the window, not a plateau; earns less than the same days of buy-and-hold | dead |
+| NQ-ES intraday spread, follow or fade, dollar-neutral | PF 0.44-0.83, 0-2/9 years | dead (two-leg costs > spread moves) |
+
+Overnight vs intraday decomposition (gross, both markets, all three periods): the overnight session earns more per unit
+of risk than the RTH session (NQ 2011-2019 overnight 11.2%/yr, Sharpe 1.12; intraday 5.1%/yr, 0.37). Real, but one
+round trip per night costs ~3%/yr on NQ and ~7%/yr on ES, and the remainder is mostly market beta.
+
+**Execution is the largest remaining lever** (NQ, paper defaults, 2011-2026, vol-targeted):
+
+| slippage per fill | PF | Sharpe |
+|---|---|---|
+| 0 ticks | 1.28 | 1.22 |
+| 1 tick (our default) | 1.24 | 0.96 |
+| 2 ticks | 1.21 | 0.71 |
+
+## Conclusion — the edge ceiling with NQ / ES on 5m bars
+
+After 70+ configurations across 9 edge families on 16 years of both markets, **one** edge survives every gate:
+noise-area intraday momentum on NQ. Its realistic ceiling is **Sharpe ~1.0-1.2 net**: 0.96 with a conservative 1-tick
+fill, 1.22 with perfect fills, volatility-targeted. Nothing tried on NQ/ES alone adds an uncorrelated second
+edge, so a portfolio above ~1.2 is not available from these two markets with this data.
+
+What would move it further, in order of expected gain:
+1. **Execution**: fills at or near the decision price (limit at the touch, or entering on the bar that crosses
+   rather than the 30-minute grid) are worth up to +0.25 Sharpe. Measure live slippage on MNQ first.
+2. **Other markets** (rejected for now): the same rule on non-equity futures is the standard way past ~1.2.
+3. **Better data**: order-flow / tick data, or options positioning (dealer gamma, which the source paper reports as
+   a strong conditioning variable). Not available in TradingView Essential.
