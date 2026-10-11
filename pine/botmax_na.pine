@@ -5,7 +5,8 @@
 //   Upper = max(open, prev close) * (1 + k*sigma), lower = min(open, prev close) * (1 - k*sigma).
 //   Every M minutes from the first decision time: close above upper -> long, below lower -> short.
 //   Trailing stop (checked at the same times): upper band or RTH VWAP, whichever is tighter. Flat at 16:00.
-// 1 contract, $2.25/side, 1 tick slippage. Decisions fill on the decision bar's close.
+// Validated on NQ only (2011-2026, locked discovery / validation / holdout: research/V1_FINDINGS.md Rounds 6-7):
+// holdout 2023-2026 PF 1.26, Sharpe ~1.1. Fails on ES. $2.25/side, 1 tick slippage, fills on the decision bar close.
 strategy("Botmax NA — Noise Area Momentum", shorttitle = "Botmax NA", overlay = true,
      initial_capital = 100000, currency = currency.USD, default_qty_type = strategy.fixed, default_qty_value = 1,
      pyramiding = 0, commission_type = strategy.commission.cash_per_contract, commission_value = 2.25,
@@ -18,6 +19,12 @@ int   firstDec = input.int(600, "First decision (minutes after midnight NY, 600 
 int   lastDec  = input.int(930, "Last entry decision (930 = 15:30)", maxval = 955)
 bool  vwapStop = input.bool(true, "Use RTH VWAP in the trailing stop")
 string dirMode = input.string("Both", "Direction", options = ["Both", "Long only", "Short only"])
+// Sizing: research validated 1 fixed contract and a vol-targeted version (same $ risk per day). Here the vol target
+// uses the daily ATR(20) of the instrument as the risk proxy: qty = target / (ATR x point value), capped.
+string sizing  = input.string("Fixed", "Sizing", options = ["Fixed", "Vol target"])
+float  qtyFix  = input.float(1, "Fixed contracts", minval = 1, step = 1)
+float  volTgt  = input.float(1000, "Vol target: $ per daily ATR", minval = 100, step = 100)
+float  qtyCap  = input.float(10, "Vol target: max contracts", minval = 1, step = 1)
 
 const string TZ = "America/New_York"
 const int SLOTS = 78                                    // 5m bars in 09:30-16:00
@@ -70,6 +77,9 @@ if rth and dayN >= 0 and timeframe.multiplier == 5
 if rth
     lastClose := close
 
+float dAtr = request.security(syminfo.tickerid, "D", ta.atr(20)[1], lookahead = barmerge.lookahead_on)
+float qty  = sizing == "Fixed" ? qtyFix : math.max(1, math.min(qtyCap, math.floor(volTgt / (dAtr * syminfo.pointvalue))))
+
 bool decision = rth and closeMin >= firstDec and closeMin % every == 0
 bool canLong  = dirMode != "Short only"
 bool canShort = dirMode != "Long only"
@@ -83,21 +93,13 @@ if decision and not na(upper)
         strategy.close("S", comment = "trail")
     if closeMin <= lastDec
         if close > upper and canLong and strategy.position_size <= 0
-            strategy.entry("L", strategy.long)
+            strategy.entry("L", strategy.long, qty = qty)
         else if close < lower and canShort and strategy.position_size >= 0
-            strategy.entry("S", strategy.short)
+            strategy.entry("S", strategy.short, qty = qty)
 
 if rth and closeMin >= 960
     strategy.close_all(comment = "EOD")
 
-var int nDec = 0
-var int nOut = 0
-if decision and not na(upper)
-    nDec += 1
-    if close > upper or close < lower
-        nOut += 1
-plot(nDec, "n decisions", display = display.data_window)
-plot(nOut, "n outside band", display = display.data_window)
 plot(upper, "Upper", color.new(color.teal, 0), style = plot.style_linebr)
 plot(lower, "Lower", color.new(color.red, 0), style = plot.style_linebr)
 plot(rth ? vwap : na, "VWAP", color.new(color.orange, 30), style = plot.style_linebr)
