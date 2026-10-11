@@ -30,3 +30,35 @@ nothing in the alttrading.ai library shows an edge big enough to see here. Next 
 1. Multi-year 5m history (`tools/ibkr_download.py`, or TradingView Deep Backtesting of `pine/botmax_v1.pine`
    via `tools/bt.mjs --grid`), then rerun `search_v1.py` on it with a fixed, untouched OOS year.
 2. Only promote a config that is profitable IS on NQ **and** ES, sits on a parameter plateau, and has 200+ trades.
+
+---
+
+# Round 2 — modules from Alt's own published logic (`research/search_v2.py`, 2,208 configs)
+
+Source: alttrading.ai's free Substack posts ("Breakouts Are Probability", "Turning the Open Into a Decision
+Model", "Why Pivots Should Be Measured", "Reversals Without Gambling", "VWAP Isn't a Line") and the site.
+Their stated pipeline: regime -> location -> acceptance -> entry with defined invalidation.
+
+| module | rule | share of configs profitable (NQ IS / ES IS / NQ OOS / ES OOS) | median PF NQ OOS / ES OOS |
+|---|---|---|---|
+| B1 acceptance | ORB break, retest within x ATR that holds, optional ATR-expansion gate | 39% / 20% / low / low | 0.00 / 0.62 |
+| **ORB reclaim fade** | ORB break closes back inside within N bars -> market back across, stop past the break extreme, target mid/opposite side | **59% / 76% / – / –** | **1.25 / 3.64** |
+| P1 pivots | anchor (RTH open / prior close) +/- k x daily ATR, reject or accept | 13% / 12% | 0.96 / 0.52 |
+| VWAP playbook | VWAP slope > x ATR = trend day (continuation only), else fades only | filter; small effect | |
+
+**ORB reclaim fade** is the only thing so far that works as a plateau, not a lucky cell: 55 of the 71 configs that are
+profitable in-sample on both NQ and ES are fades. Untuned default (09:30-09:45 range, reclaim within 6 bars,
+target opposite side, trades until 13:00, no filters), full 60 days:
+
+| | trades | win % | PF | net | max DD | IS PF | OOS PF | 2x costs PF |
+|---|---|---|---|---|---|---|---|---|
+| NQ (1 contract) | 34 | 50% | 1.66 | +$10,467 | $4,252 | 2.19 | 0.87 | 1.63 |
+| ES (1 contract) | 38 | 63% | 2.32 | +$7,879 | $1,227 | 2.69 | 1.88 | 2.10 |
+
+Every neighbour (target midpoint, 12-bar reclaim, 10:00 range end) stays profitable on the full sample on both
+markets. Weak spots: NQ OOS is about breakeven (PF 0.87-1.31 depending on the neighbour), October is negative on
+both, NQ profit came almost entirely from shorts. It matches the raw stat above (price re-enters the range on
+94-98% of days) and Alt's own advice ("if price re-enters the range quickly, switch mindset").
+
+Still ~35 trades per market: a t-stat around 1.5, so promising, **not proven**. It is in
+`pine/botmax_v1.pine` as Setup = "ORB reclaim fade" for a multi-year Deep Backtest before anything else.

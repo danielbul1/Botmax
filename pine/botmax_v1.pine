@@ -4,6 +4,8 @@
 //   ORB      — ATX ORB Sniper / Mike's ORB / B1 description: 5m close crosses the 09:30-x NY range.
 //   SWEEP    — TX Price Action / Asia Fibonacci: session level taken -> close-based break of the last
 //              confirmed swing the other way -> limit at a fib retracement of the sweep leg.
+//   FADE     — ORB break that closes back inside the range within N bars -> trade back across the range
+//              (Alt's "if price re-enters the range quickly, switch mindset").
 //   Filters  — Regime Detection (1h SMA fast/slow + slope), Tom's hourly colour run, RTH VWAP side,
 //              daily time-series momentum. All HTF data is [1] + lookahead_on (completed bars only).
 // Fixed vs the originals: no lookahead_on without [1] (Tom's), close-based breaks (not wicks), alerts
@@ -33,6 +35,7 @@ enum Setup
     orb   = "ORB"
     sweep = "Sweep -> BOS -> fib"
     both  = "Both"
+    fade  = "ORB reclaim fade"
 
 enum OrbStop
     range = "Opposite side of range"
@@ -52,6 +55,10 @@ string orbSess   = input.session("0930-0945", "Opening range", group = G_O)
 string orbTrade  = input.session("0945-1130", "Breakout window", group = G_O)
 OrbStop orbStop  = input.enum(OrbStop.range, "Stop", group = G_O)
 OrbEntry orbEntry = input.enum(OrbEntry.market, "Entry", group = G_O)
+
+const string G_FD = "ORB reclaim fade"
+int  fadeBars  = input.int(6, "Reclaim close within (bars of the break)", minval = 1, group = G_FD)
+bool fadeToOpp = input.bool(true, "Target opposite side of range (off = midpoint)", group = G_FD)
 
 const string G_S = "Sweep"
 string sweepSess = input.session("0830-1100", "Sweep window", group = G_S)
@@ -78,6 +85,9 @@ int  regSlow   = input.int(34, "Regime slow SMA (1h)", minval = 3, group = G_F)
 bool useHbias  = input.bool(false, "Hourly colour run >= 2 (Tom's bias)", group = G_F)
 bool useVwap   = input.bool(false, "Price on the trade side of RTH VWAP", group = G_F)
 int  tsLen     = input.int(0, "Daily momentum lookback (0 = off)", minval = 0, group = G_F)
+bool useVmode  = input.bool(false, "VWAP slope picks playbook (trend day: continuation only, flat: fades only)", group = G_F)
+int   vsLen    = input.int(12, "VWAP slope lookback (bars)", minval = 2, group = G_F)
+float vsThr    = input.float(1.0, "Trend day if VWAP moved > x ATR", minval = 0, step = 0.25, group = G_F)
 
 // ───────── global series (every ta.* / request.* unconditionally) ─────────
 float atr = ta.rma(ta.tr(true), 14)
@@ -119,12 +129,16 @@ if inRTH
     pv += hlc3 * nz(volume)
     vv += nz(volume)
 float vwap = inRTH and vv > 0 ? pv / vv : na
+float vSlope = vwap - vwap[vsLen]
+int vmode = na(vSlope) ? 0 : vSlope > vsThr * atr ? 1 : vSlope < -vsThr * atr ? -1 : 0
 
 float ph = ta.pivothigh(high, piv, piv)
 float pl = ta.pivotlow(low, piv, piv)
 
-allowed(int d) =>
+allowed(int d, bool meanRev = false) =>
     bool ok = true
+    if useVmode and (meanRev ? vmode != 0 : vmode != d)
+        ok := false
     if useRegime and regime != d
         ok := false
     if useHbias and hbias != d
@@ -166,6 +180,11 @@ var float swFar = na
 var float swBos = na
 var int   swBar = na
 var string swTag = ""
+// ORB break tracker for the fade
+var int   bUpBar = na
+var float bUpExt = na
+var int   bDnBar = na
+var float bDnExt = na
 // pending order
 var int   pDir = 0
 var int   pBar = na
@@ -194,6 +213,8 @@ if newDay
     orbH := na
     orbL := na
     swDir := 0
+    bUpBar := na
+    bDnBar := na
     if usePD and not na(dayH)
         pdH.price := dayH
         pdL.price := dayL
@@ -218,6 +239,7 @@ if not na(pl)
 bool flat     = strategy.position_size == 0
 bool canTrade = flat and pDir == 0 and tradesToday < maxTrades
 int   nDir = 0
+float nTp  = na
 float nPx  = na
 float nStop = na
 bool  nLimit = false
@@ -246,6 +268,43 @@ if (setup == Setup.orb or setup == Setup.both) and orbWin and not na(orbH)
                 nPx    := nLimit ? lvl : close
                 nTag   := "ORB"
 
+// ───────── SIGNAL: ORB reclaim fade (break fails back inside the range) ─────────
+if setup == Setup.fade and not na(orbH) and not inORB
+    // ages / extremes of live breaks, then reclaim check (break bar itself excluded)
+    if not na(bUpBar) and bar_index > bUpBar
+        bUpExt := math.max(bUpExt, high)
+        if bar_index - bUpBar > fadeBars
+            bUpBar := na
+        else if close < orbH
+            if canTrade and nDir == 0 and allowed(-1, true)
+                nDir  := -1
+                nPx   := close
+                nStop := math.round_to_mintick(bUpExt + stopBuf * syminfo.mintick)
+                nTp   := math.round_to_mintick(fadeToOpp ? orbL : (orbH + orbL) / 2)
+                nTag  := "FADE"
+            bUpBar := na
+    if not na(bDnBar) and bar_index > bDnBar
+        bDnExt := math.min(bDnExt, low)
+        if bar_index - bDnBar > fadeBars
+            bDnBar := na
+        else if close > orbL
+            if canTrade and nDir == 0 and allowed(1, true)
+                nDir  := 1
+                nPx   := close
+                nStop := math.round_to_mintick(bDnExt - stopBuf * syminfo.mintick)
+                nTp   := math.round_to_mintick(fadeToOpp ? orbH : (orbH + orbL) / 2)
+                nTag  := "FADE"
+            bDnBar := na
+    // new breaks (one per side per day)
+    if orbWin and close > orbH and close[1] <= orbH and not orbLongDone
+        orbLongDone := true
+        bUpBar := bar_index
+        bUpExt := high
+    if orbWin and close < orbL and close[1] >= orbL and not orbShortDone
+        orbShortDone := true
+        bDnBar := bar_index
+        bDnExt := low
+
 // ───────── SIGNAL: sweep -> BOS -> fib retrace ─────────
 if setup == Setup.sweep or setup == Setup.both
     bool newSweep = false
@@ -272,7 +331,7 @@ if setup == Setup.sweep or setup == Setup.both
                 swBos := nb
         swFar := d == 1 ? math.max(swFar, high) : math.min(swFar, low)
         if d == 1 ? close > swBos : close < swBos
-            if canTrade and nDir == 0 and allowed(d)
+            if canTrade and nDir == 0 and allowed(d, true)
                 nDir   := d
                 nPx    := math.round_to_mintick(swFar - d * fib * math.abs(swFar - swExt))
                 nStop  := math.round_to_mintick(swExt - d * stopBuf * syminfo.mintick)
@@ -285,11 +344,12 @@ if setup == Setup.sweep or setup == Setup.both
 // ───────── EXECUTION ─────────
 if nDir != 0
     float risk = (nPx - nStop) * nDir
-    if risk >= minStopAtr * atr and risk <= maxStopAtr * atr
+    bool fixedTp = not na(nTp) and (nTp - nPx) * nDir > 0
+    if risk >= minStopAtr * atr and risk <= maxStopAtr * atr and (na(nTp) or fixedTp)
         pDir  := nDir
         pBar  := bar_index
         pStop := nStop
-        pTp   := math.round_to_mintick(nPx + nDir * rr * risk)
+        pTp   := fixedTp ? nTp : math.round_to_mintick(nPx + nDir * rr * risk)
         pId   := nDir == 1 ? "L" : "S"
         strategy.entry(pId, nDir == 1 ? strategy.long : strategy.short, limit = nLimit ? nPx : na, comment = nTag)
         strategy.exit("x" + pId, pId, stop = pStop, limit = pTp)
