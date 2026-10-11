@@ -1,38 +1,54 @@
 //@version=6
-// Botmax NA — Noise Area intraday momentum, after Zarattini, Aziz & Barbon (2024),
-// "Beat the Market: An Effective Intraday Momentum Strategy for S&P500 ETF (SPY)", SFI WP 24-97.
-//   Noise area: for each time of day, sigma = mean |close / day open - 1| over the last N RTH sessions.
+// Botmax NA — Noise Area intraday momentum on NQ (the validated Botmax edge).
+// Source: Zarattini, Aziz & Barbon (2024), "Beat the Market: An Effective Intraday Momentum Strategy for
+// S&P500 ETF (SPY)", SFI WP 24-97.
+//   Noise area: for each time of day, sigma = mean |close / day open - 1| over the last 14 RTH sessions.
 //   Upper = max(open, prev close) * (1 + k*sigma), lower = min(open, prev close) * (1 - k*sigma).
-//   Every M minutes from the first decision time: close above upper -> long, below lower -> short.
-//   Trailing stop (checked at the same times): upper band or RTH VWAP, whichever is tighter. Flat at 16:00.
-// Validated on NQ only (2011-2026, locked discovery / validation / holdout: research/V1_FINDINGS.md Rounds 6-7):
-// holdout 2023-2026 PF 1.26, Sharpe ~1.1. Fails on ES. $2.25/side, 1 tick slippage, fills on the decision bar close.
+//   Every 30 minutes from 10:00 to 15:30: close above upper -> long, below lower -> short (reversals allowed).
+//   Trailing stop, checked at the same times: max(upper, RTH VWAP) for longs, min(lower, VWAP) for shorts.
+//   Flat at 16:00 or on the last regular-session bar (half days). Never holds overnight.
+// Validation (research/V1_FINDINGS.md, Rounds 6-7; 1 NQ, 1 tick slippage, $2.25/side; locked periods):
+//   2011-2019 PF 1.21 / Sharpe 0.80, 2020-2022 PF 1.24 / 1.15, holdout 2023-2026 PF 1.26 / 1.06, every holdout year
+//   positive. Volatility-targeted sizing (below) 2011-2026: Sharpe 0.96. Does NOT work on ES. Use NQ1! or MNQ1!, 5m.
+// Execution matters: each extra tick of slippage costs ~0.25 Sharpe. Default inputs are the validated ones.
+// Commission is $2.25/contract (NQ). On MNQ set Properties -> Commission to your real rate (~$0.62).
+// Automation: create an alert on this strategy with "Order fills" and message {{strategy.order.alert_message}}.
 strategy("Botmax NA — Noise Area Momentum", shorttitle = "Botmax NA", overlay = true,
      initial_capital = 100000, currency = currency.USD, default_qty_type = strategy.fixed, default_qty_value = 1,
      pyramiding = 0, commission_type = strategy.commission.cash_per_contract, commission_value = 2.25,
      slippage = 1, margin_long = 8, margin_short = 8, process_orders_on_close = true, max_bars_back = 5000)
 
-int   lookback = input.int(14, "Noise lookback (sessions)", minval = 2, maxval = 60)
-float k        = input.float(1.0, "Band multiplier", minval = 0.25, step = 0.25)
-int   every    = input.int(30, "Decision interval (minutes)", options = [5, 10, 15, 30, 60])
-int   firstDec = input.int(600, "First decision (minutes after midnight NY, 600 = 10:00)", minval = 575)
-int   lastDec  = input.int(930, "Last entry decision (930 = 15:30)", maxval = 955)
-bool  vwapStop = input.bool(true, "Use RTH VWAP in the trailing stop")
-string dirMode = input.string("Both", "Direction", options = ["Both", "Long only", "Short only"])
-// Sizing: research validated 1 fixed contract and a vol-targeted version (same $ risk per day). Here the vol target
-// uses the daily ATR(20) of the instrument as the risk proxy: qty = target / (ATR x point value), capped.
-string sizing  = input.string("Fixed", "Sizing", options = ["Fixed", "Vol target"])
-float  qtyFix  = input.float(1, "Fixed contracts", minval = 1, step = 1)
-float  volTgt  = input.float(1000, "Vol target: $ per daily ATR", minval = 100, step = 100)
-float  qtyCap  = input.float(10, "Vol target: max contracts", minval = 1, step = 1)
+// ───────── inputs (defaults = validated) ─────────
+const string G_R = "Rules (validated defaults)"
+int   lookback = input.int(14, "Noise lookback (sessions)", minval = 2, maxval = 60, group = G_R)
+float k        = input.float(1.0, "Band multiplier", minval = 0.25, step = 0.25, group = G_R)
+int   every    = input.int(30, "Decision interval (minutes)", options = [5, 10, 15, 30, 60], group = G_R)
+int   firstDec = input.int(600, "First decision (minutes after midnight NY, 600 = 10:00)", minval = 575, group = G_R)
+int   lastDec  = input.int(930, "Last entry decision (930 = 15:30)", maxval = 955, group = G_R)
+bool  vwapStop = input.bool(true, "Use RTH VWAP in the trailing stop", group = G_R)
+string dirMode = input.string("Both", "Direction", options = ["Both", "Long only", "Short only"], group = G_R)
 
+const string G_S = "Sizing"
+string sizing = input.string("Fixed", "Sizing", options = ["Fixed", "Vol target"], group = G_S,
+     tooltip = "Vol target = the tested version: contracts = target / stdev of the strategy's own daily P&L per contract over the last 60 sessions. Best on MNQ (fine-grained size).")
+int   qtyFix = input.int(1, "Fixed contracts", minval = 1, group = G_S)
+float volTgt = input.float(1000, "Vol target: $ daily P&L stdev", minval = 50, step = 50, group = G_S)
+int   qtyMax = input.int(30, "Vol target: max contracts", minval = 1, group = G_S)
+
+const string G_V = "Display"
+bool showTbl = input.bool(true, "Status panel", group = G_V)
+
+// ───────── time ─────────
 const string TZ = "America/New_York"
 const int SLOTS = 78                                    // 5m bars in 09:30-16:00
 int openMin  = hour(time, TZ) * 60 + minute(time, TZ)
 int closeMin = openMin + timeframe.multiplier
 bool rth     = openMin >= 570 and openMin < 960
 int slot     = int((openMin - 570) / 5)
+bool firstBar = rth and openMin == 570
+bool lastRegular = session.islastbar_regular
 
+// ───────── noise area ─────────
 var array<float> moves = array.new<float>((lookback + 1) * SLOTS, na)
 var int   dayN      = -1
 var float dayOpen   = na
@@ -41,8 +57,18 @@ var float lastClose = na
 var float pv = 0.0
 var float vv = 0.0
 
-bool firstBar = rth and openMin == 570
+// sizing state: per-contract daily P&L of this strategy
+var array<float> dayPnl = array.new<float>()
+var float npDayStart = 0.0
+var float qtyToday   = na
+
 if firstBar
+    if dayN >= 0
+        dayPnl.push(na(qtyToday) ? 0.0 : (strategy.netprofit - npDayStart) / qtyToday)
+        if dayPnl.size() > 60
+            dayPnl.shift()
+    npDayStart := strategy.netprofit
+    qtyToday   := na
     prevClose := lastClose
     dayOpen   := open
     dayN      += 1
@@ -55,12 +81,12 @@ if firstBar
 float upper = na
 float lower = na
 float vwap  = na
+float sigma = na
 if rth and dayN >= 0 and timeframe.multiplier == 5
     pv += hlc3 * volume
     vv += volume
     vwap := vv > 0 ? pv / vv : close
     int row = dayN % (lookback + 1)
-    // sigma for this slot from the previous `lookback` sessions (current row excluded)
     float sum = 0.0
     int   cnt = 0
     for r = 0 to lookback
@@ -69,7 +95,7 @@ if rth and dayN >= 0 and timeframe.multiplier == 5
             if not na(m)
                 sum += m
                 cnt += 1
-    float sigma = cnt == lookback ? sum / cnt : na
+    sigma := cnt == lookback ? sum / cnt : na
     moves.set(row * SLOTS + slot, math.abs(close / dayOpen - 1))
     if not na(sigma) and not na(prevClose)
         upper := math.max(dayOpen, prevClose) * (1 + k * sigma)
@@ -77,29 +103,53 @@ if rth and dayN >= 0 and timeframe.multiplier == 5
 if rth
     lastClose := close
 
-float dAtr = request.security(syminfo.tickerid, "D", ta.atr(20)[1], lookahead = barmerge.lookahead_on)
-float qty  = sizing == "Fixed" ? qtyFix : math.max(1, math.min(qtyCap, math.floor(volTgt / (dAtr * syminfo.pointvalue))))
+// ───────── size ─────────
+float pnlVol = dayPnl.size() >= 20 ? dayPnl.stdev(true) : na
+int qty = sizing == "Fixed" or na(pnlVol) or pnlVol <= 0 ? qtyFix : int(math.max(1, math.min(qtyMax, math.round(volTgt / pnlVol))))
 
+// ───────── signals ─────────
 bool decision = rth and closeMin >= firstDec and closeMin % every == 0
 bool canLong  = dirMode != "Short only"
 bool canShort = dirMode != "Long only"
+string sym = syminfo.ticker
 
-if decision and not na(upper)
+if decision and not na(upper) and timeframe.multiplier == 5
     float longStop  = vwapStop ? math.max(upper, vwap) : upper
     float shortStop = vwapStop ? math.min(lower, vwap) : lower
     if strategy.position_size > 0 and close < longStop
-        strategy.close("L", comment = "trail")
+        strategy.close("L", comment = "trail", alert_message = '{"botmax":"NA","symbol":"' + sym + '","action":"exit_long"}')
     if strategy.position_size < 0 and close > shortStop
-        strategy.close("S", comment = "trail")
+        strategy.close("S", comment = "trail", alert_message = '{"botmax":"NA","symbol":"' + sym + '","action":"exit_short"}')
     if closeMin <= lastDec
         if close > upper and canLong and strategy.position_size <= 0
-            strategy.entry("L", strategy.long, qty = qty)
+            strategy.entry("L", strategy.long, qty = qty,
+                 alert_message = '{"botmax":"NA","symbol":"' + sym + '","action":"long","qty":' + str.tostring(qty) + '}')
+            qtyToday := qty
         else if close < lower and canShort and strategy.position_size >= 0
-            strategy.entry("S", strategy.short, qty = qty)
+            strategy.entry("S", strategy.short, qty = qty,
+                 alert_message = '{"botmax":"NA","symbol":"' + sym + '","action":"short","qty":' + str.tostring(qty) + '}')
+            qtyToday := qty
 
-if rth and closeMin >= 960
-    strategy.close_all(comment = "EOD")
+if (rth and closeMin >= 960) or (lastRegular and strategy.position_size != 0)
+    strategy.close_all(comment = "EOD", alert_message = '{"botmax":"NA","symbol":"' + sym + '","action":"flat"}')
 
+// ───────── plots / panel ─────────
 plot(upper, "Upper", color.new(color.teal, 0), style = plot.style_linebr)
 plot(lower, "Lower", color.new(color.red, 0), style = plot.style_linebr)
 plot(rth ? vwap : na, "VWAP", color.new(color.orange, 30), style = plot.style_linebr)
+
+var table tbl = table.new(position.top_right, 2, 6, bgcolor = color.new(color.black, 20), border_width = 1)
+if showTbl and (barstate.islastconfirmedhistory or barstate.isrealtime)
+    string posTxt = strategy.position_size > 0 ? "LONG " + str.tostring(strategy.position_size) : strategy.position_size < 0 ? "SHORT " + str.tostring(-strategy.position_size) : "flat"
+    table.cell(tbl, 0, 0, "Botmax NA", text_color = color.white)
+    table.cell(tbl, 1, 0, syminfo.ticker == "NQ1!" or str.startswith(syminfo.root, "NQ") or str.startswith(syminfo.root, "MNQ") ? "NQ ok" : "NOT validated here", text_color = str.startswith(syminfo.root, "NQ") or str.startswith(syminfo.root, "MNQ") ? color.lime : color.red)
+    table.cell(tbl, 0, 1, "Position", text_color = color.gray)
+    table.cell(tbl, 1, 1, posTxt, text_color = color.white)
+    table.cell(tbl, 0, 2, "Upper / lower", text_color = color.gray)
+    table.cell(tbl, 1, 2, na(upper) ? "-" : str.tostring(upper, format.mintick) + " / " + str.tostring(lower, format.mintick), text_color = color.white)
+    table.cell(tbl, 0, 3, "Noise (sigma)", text_color = color.gray)
+    table.cell(tbl, 1, 3, na(sigma) ? "-" : str.tostring(sigma * 100, "#.###") + "%", text_color = color.white)
+    table.cell(tbl, 0, 4, "Next size", text_color = color.gray)
+    table.cell(tbl, 1, 4, str.tostring(qty) + (sizing == "Fixed" ? " (fixed)" : " (vol target)"), text_color = color.white)
+    table.cell(tbl, 0, 5, "P&L stdev/contract/day", text_color = color.gray)
+    table.cell(tbl, 1, 5, na(pnlVol) ? "warming up" : "$" + str.tostring(pnlVol, "#"), text_color = color.white)
